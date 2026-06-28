@@ -290,20 +290,40 @@
 
         <!-- 上传文件模式 -->
         <div id="recUploadPanel" style="display:none;">
-          <div class="card">
-            <h3 style="margin-bottom:12px;">上传音频文件</h3>
-            <div class="upload-zone" onclick="document.getElementById('audioFileInput').click()">
-              <p style="font-size:16px;">🎵 点击选择音频文件</p>
-              <p style="font-size:13px;color:#999;margin-top:8px;">支持 mp3/wav/ogg/m4a 等格式</p>
-            </div>
-            <input type="file" id="audioFileInput" style="display:none" accept="audio/*" onchange="handleAudioFileSelect(event)">
+          <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <button class="btn btn-primary" id="uploadTextTab" onclick="switchUploadMode('text')">📝 输入文本</button>
+            <button class="btn" id="uploadAudioTab" onclick="switchUploadMode('audio')">🎵 上传音频</button>
           </div>
-          <div class="card" id="uploadPlayerCard" style="display:none;">
-            <audio id="audioPlayer" controls style="width:100%;margin-bottom:12px;"></audio>
-            <button class="btn btn-primary" onclick="processUploadedAudio()" style="width:100%;">🚀 生成思维导图 + 笔记</button>
-            <div class="audio-progress" id="audioProgress" style="margin-top:10px;">
-              <div class="audio-progress-bar"><div class="audio-progress-bar-fill" id="audioProgressFill"></div></div>
-              <div class="audio-progress-text" id="audioProgressText">识别中...</div>
+          <!-- 文本输入模式 -->
+          <div id="uploadTextMode">
+            <div class="card">
+              <h3 style="margin-bottom:12px;">输入或粘贴文本</h3>
+              <textarea id="directTextInput" rows="12" placeholder="在此粘贴或输入需要生成思维导图和笔记的文本内容……&#10;&#10;也可以点击下面的按钮上传 .txt 文件" style="width:100%;resize:vertical;line-height:1.8;"></textarea>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <button class="btn" onclick="document.getElementById('txtFileInput').click()">📄 上传txt文件</button>
+                <input type="file" id="txtFileInput" style="display:none" accept=".txt,.md,.srt,.csv" onchange="handleTxtFileSelect(event)">
+                <div style="flex:1;"></div>
+                <button class="btn btn-primary" onclick="generateFromText()">🚀 生成思维导图 + 笔记</button>
+              </div>
+            </div>
+          </div>
+          <!-- 音频上传模式 -->
+          <div id="uploadAudioMode" style="display:none;">
+            <div class="card">
+              <h3 style="margin-bottom:12px;">上传音频文件</h3>
+              <div class="upload-zone" onclick="document.getElementById('audioFileInput').click()">
+                <p style="font-size:16px;">🎵 点击选择音频文件</p>
+                <p style="font-size:13px;color:#999;margin-top:8px;">支持 mp3/wav/ogg/m4a 等格式（使用浏览器语音识别，建议环境安静）</p>
+              </div>
+              <input type="file" id="audioFileInput" style="display:none" accept="audio/*" onchange="handleAudioFileSelect(event)">
+            </div>
+            <div class="card" id="uploadPlayerCard" style="display:none;">
+              <audio id="audioPlayer" controls style="width:100%;margin-bottom:12px;"></audio>
+              <button class="btn btn-primary" onclick="processUploadedAudio()" style="width:100%;">🚀 识别音频并生成思维导图 + 笔记</button>
+              <div class="audio-progress" id="audioProgress" style="margin-top:10px;">
+                <div class="audio-progress-bar"><div class="audio-progress-bar-fill" id="audioProgressFill"></div></div>
+                <div class="audio-progress-text" id="audioProgressText">识别中...</div>
+              </div>
             </div>
           </div>
           <div id="uploadResult" style="margin-top:16px;"></div>
@@ -1830,6 +1850,58 @@ document.head.appendChild(style);
     isDragging = false;
   });
 })();
+
+
+function switchUploadMode(mode) {
+  document.getElementById('uploadTextMode').style.display = mode === 'text' ? '' : 'none';
+  document.getElementById('uploadAudioMode').style.display = mode === 'audio' ? '' : 'none';
+  document.getElementById('uploadTextTab').className = mode === 'text' ? 'btn btn-primary' : 'btn';
+  document.getElementById('uploadAudioTab').className = mode === 'audio' ? 'btn btn-primary' : 'btn';
+  document.getElementById('uploadResult').innerHTML = '';
+}
+
+async function handleTxtFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    document.getElementById('directTextInput').value = text;
+    showToast('文件已加载');
+  } catch (e) {
+    showToast('读取文件失败');
+  }
+}
+
+async function generateFromText() {
+  const text = document.getElementById('directTextInput').value.trim();
+  if (!text) { showToast('请先输入或粘贴文本内容'); return; }
+  if (text.length < 20) { showToast('内容太短，请输入更多内容'); return; }
+
+  document.getElementById('uploadResult').innerHTML = '<div class="card" style="text-align:center;padding:40px;"><p style="font-size:16px;">⏳ AI 正在生成思维导图和笔记，请稍候...</p></div>';
+
+  const [mindmap, notes] = await Promise.all([
+    callDeepSeek([
+      { role: 'system', content: '你是一个专业的思维导图生成助手。请根据用户提供的文本内容，生成结构清晰的思维导图，使用 Markdown 缩进层级格式。要求：1. 提炼核心主题作为根节点 2. 按逻辑关系分层 3. 每层节点简洁精炼（不超过15字） 4. 层次分明、重点突出' },
+      { role: 'user', content: `请根据以下内容生成思维导图（Markdown 缩进格式）：\n\n${text}` }
+    ]),
+    callDeepSeek([
+      { role: 'system', content: '你是一个专业的学习笔记整理助手。请根据用户提供的文本内容，生成一份结构清晰、重点突出的笔记摘要。要求：1. 提取核心要点 2. 按主题分段 3. 用编号列表展示 4. 标注关键概念和重要术语' },
+      { role: 'user', content: `请根据以下内容生成笔记摘要：\n\n${text}` }
+    ])
+  ]);
+
+  let html = '';
+  if (mindmap) {
+    html += `<div class="card"><h3 style="margin-bottom:12px;">🧠 思维导图</h3><div style="background:#FFF8F0;border-radius:8px;padding:16px;white-space:pre-wrap;font-size:14px;line-height:2;font-family:monospace;">${escapeHtml(mindmap)}</div></div>`;
+  }
+  if (notes) {
+    html += `<div class="card"><h3 style="margin-bottom:12px;">📝 笔记摘要</h3><div contenteditable="true" style="line-height:1.8;padding:12px;border:1px solid var(--border);border-radius:8px;min-height:100px;outline:none;" onclick="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">${formatAiReply(notes)}</div><p style="font-size:12px;color:#999;margin-top:8px;">💡 点击笔记内容可直接编辑修改</p></div>`;
+  }
+  if (!html) {
+    html = '<div class="card" style="color:red;">生成失败，请重试</div>';
+  }
+  document.getElementById('uploadResult').innerHTML = html;
+}
 
 </script>
 </body>

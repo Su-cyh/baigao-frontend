@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>白糕平台</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <style>
     :root {
       --bg: #FAF6F0;
@@ -404,6 +406,31 @@ function saveSettings() {
   showToast('配置已保存');
 }
 
+// ========== File Parser ==========
+async function parseFileContent(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'txt') {
+    return await file.text();
+  } else if (ext === 'pdf') {
+    const arrayBuffer = await file.arrayBuffer();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join(' ') + '\n';
+    }
+    return text;
+  } else if (ext === 'docx') {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({arrayBuffer: arrayBuffer});
+    return result.value;
+  } else {
+    return await file.text();
+  }
+}
+
 // ========== Global State ==========
 let manualQuestions = [];
 let currentExam = null;
@@ -491,12 +518,17 @@ async function handleExamFile(e) {
   const file = e.target.files[0];
   if (!file) return;
   
-  showToast('正在生成试卷...');
-  const reader = new FileReader();
-  reader.onload = async function(ev) {
-    const content = ev.target.result;
+  showToast('正在读取文件内容...');
+  try {
+    const content = await parseFileContent(file);
+    if (!content.trim()) {
+      showToast('文件内容为空，请检查文件');
+      return;
+    }
+    showToast('文件读取成功，正在生成试卷...');
     const result = await callDeepSeek([
-      { role: 'user', content: `根据以下学习资料生成一份试卷，包含选择题、填空题、简答题，并给出答案：\n\n${content}` }
+      { role: 'system', content: '你是一个专业的出题老师。请严格以JSON格式返回，不要包含任何其他文字。JSON格式：{"title":"试卷标题","questions":[{"type":"选择题","content":"题目内容","options":["A. xxx","B. xxx","C. xxx","D. xxx"],"answer":"A"},{"type":"填空题","content":"题目内容","answer":"答案"},{"type":"简答题","content":"题目内容","answer":"参考答案"}]}' },
+      { role: 'user', content: `请仔细阅读以下学习资料，根据资料内容生成一份包含5道选择题、3道填空题、2道简答题的试卷（共10题），并给出标准答案。请确保题目紧扣资料内容，难度适中。\n\n资料内容：\n${content}` }
     ]);
     if (result) {
       try {
@@ -507,21 +539,25 @@ async function handleExamFile(e) {
         showToast('试卷生成成功！');
       } catch(err) {
         showToast('试卷格式错误，请重试');
-        console.log('JSON解析失败:', result);
+        console.log('JSON解析失败，AI返回:', result);
       }
     }
-  };
-  reader.readAsText(file);
+  } catch(err) {
+    showToast('文件读取失败：' + err.message);
+  }
 }
 
 async function handleOrganizeFile(e) {
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    document.getElementById('organizeTextInput').value = ev.target.result;
-  };
-  reader.readAsText(file);
+  try {
+    showToast('正在读取文件...');
+    const content = await parseFileContent(file);
+    document.getElementById('organizeTextInput').value = content;
+    showToast('文件读取成功');
+  } catch(err) {
+    showToast('文件读取失败：' + err.message);
+  }
 }
 
 async function organizeQuestionsToExam() {
@@ -546,19 +582,33 @@ async function organizeQuestionsToExam() {
   }
 }
 
+let extendFileContent = '';
+
 async function handleExtendFile(e) {
   const file = e.target.files[0];
   if (!file) return;
-  document.getElementById('extendConfig').style.display = 'block';
-  showToast('文件已加载，点击"生成延伸题"开始');
+  try {
+    showToast('正在读取文件...');
+    extendFileContent = await parseFileContent(file);
+    if (!extendFileContent.trim()) {
+      showToast('文件内容为空，请检查文件');
+      return;
+    }
+    document.getElementById('extendConfig').style.display = 'block';
+    showToast('文件读取成功，点击"生成延伸题"开始');
+  } catch(err) {
+    showToast('文件读取失败：' + err.message);
+  }
 }
 
 async function extendExamQuestions() {
+  if (!extendFileContent) { showToast('请先上传试卷文件'); return; }
   showToast('正在生成延伸题...');
   const count = document.getElementById('extendCount').value;
   const diff = document.getElementById('extendDifficulty').value;
   const result = await callDeepSeek([
-    { role: 'user', content: `根据以下试卷，按知识点生成延伸题，每题生成${count}道新题，难度${diff}。返回 JSON 格式，包含 title 和 questions 数组：\n\n[试卷内容]` }
+    { role: 'system', content: '你是一个专业的出题老师。请严格以JSON格式返回，不要包含任何其他文字。JSON格式：{"title":"试卷标题","questions":[{"type":"选择题","content":"题目内容","options":["A. xxx","B. xxx","C. xxx","D. xxx"],"answer":"A"},{"type":"填空题","content":"题目内容","answer":"答案"},{"type":"简答题","content":"题目内容","answer":"参考答案"}]}' },
+    { role: 'user', content: `请仔细阅读以下试卷内容，分析其中的知识点，然后针对每个知识点生成${count}道延伸题，难度为${diff}。返回JSON格式，包含title和questions数组。\n\n试卷内容：\n${extendFileContent}` }
   ]);
   if (result) {
     try {
@@ -569,7 +619,7 @@ async function extendExamQuestions() {
       showToast('延伸题生成成功！');
     } catch(err) {
       showToast('生成失败，请重试');
-      console.log('JSON解析失败:', result);
+      console.log('JSON解析失败，AI返回:', result);
     }
   }
 }

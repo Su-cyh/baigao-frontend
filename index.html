@@ -1384,6 +1384,7 @@ function startLiveRecord() {
   liveRecognition.continuous = true;
   liveRecognition.interimResults = true;
   liveRecognition.lang = 'zh-CN';
+  liveRecognition.maxAlternatives = 1;
   liveTranscript = '';
   
   document.getElementById('liveTranscript').textContent = '';
@@ -1504,35 +1505,64 @@ async function processUploadedAudio() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const rec = new SpeechRecognition();
   rec.continuous = true;
-  rec.interimResults = false;
+  rec.interimResults = true;
   rec.lang = 'zh-CN';
+  rec.maxAlternatives = 1;
   let transcript = '';
+  let lastFinalIndex = 0;
+  let recEnded = false;
+  
+  // Show live transcript in progress area
+  document.getElementById('audioProgressText').innerHTML = '正在识别音频内容...<div id="audioLiveTranscript" style="margin-top:8px;font-size:13px;color:#888;max-height:120px;overflow-y:auto;white-space:pre-wrap;"></div>';
   
   rec.onresult = (event) => {
-    for (let i = 0; i < event.results.length; i++) {
+    let interim = '';
+    for (let i = lastFinalIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
         transcript += event.results[i][0].transcript + ' ';
+        lastFinalIndex = i + 1;
+      } else {
+        interim += event.results[i][0].transcript;
       }
     }
-    document.getElementById('audioProgressFill').style.width = '60%';
+    document.getElementById('audioProgressFill').style.width = Math.min(30 + (player.currentTime / player.duration) * 50, 80) + '%';
+    const liveEl = document.getElementById('audioLiveTranscript');
+    if (liveEl) {
+      liveEl.innerHTML = escapeHtml(transcript) + '<span style="color:#bbb;">' + escapeHtml(interim) + '</span>';
+      liveEl.scrollTop = liveEl.scrollHeight;
+    }
   };
   
   rec.onend = async () => {
+    if (!recEnded) {
+      // Auto-restart if audio is still playing (Chrome may stop recognition intermittently)
+      if (!player.paused && !player.ended) {
+        try { rec.start(); } catch(e) {}
+        return;
+      }
+      recEnded = true;
+    }
     document.getElementById('audioProgressFill').style.width = '80%';
     player.pause();
     
     if (!transcript.trim()) {
       document.getElementById('audioProgress').style.display = 'none';
-      showToast('未识别到语音内容，请检查音频是否清晰');
+      showToast('未识别到语音内容。建议：1) 使用"实时录音"模式播放音频让麦克风收音；2) 或使用"输入文本"模式直接粘贴内容');
       return;
     }
     
-    document.getElementById('audioProgressText').textContent = '识别完成，正在生成思维导图和笔记...';
+    document.getElementById('audioProgressText').textContent = '识别完成（' + transcript.length + ' 字），正在生成思维导图和笔记...';
     
     // 同时生成思维导图和笔记
     const [mindmap, notes] = await Promise.all([
-      callDeepSeek([{ role: 'user', content: `根据以下内容生成思维导图的 Markdown 格式（使用缩进和层级结构），要求结构清晰、重点突出、层次分明：\n\n${transcript}` }]),
-      callDeepSeek([{ role: 'user', content: `根据以下内容生成一份简洁清晰的笔记摘要。要求：\n1. 提取核心要点\n2. 按主题分段\n3. 用编号列表展示\n4. 标注关键概念\n\n内容：\n${transcript}` }])
+      callDeepSeek([
+        { role: 'system', content: '你是一个专业的思维导图生成助手。请根据用户提供的文本内容，生成结构清晰的思维导图，使用 Markdown 缩进层级格式。要求：1. 提炼核心主题作为根节点 2. 按逻辑关系分层 3. 每层节点简洁精炼（不超过15字） 4. 层次分明、重点突出' },
+        { role: 'user', content: `请根据以下内容生成思维导图（Markdown 缩进格式）：\n\n${transcript}` }
+      ]),
+      callDeepSeek([
+        { role: 'system', content: '你是一个专业的学习笔记整理助手。请根据用户提供的文本内容，生成一份结构清晰、重点突出的笔记摘要。要求：1. 提取核心要点 2. 按主题分段 3. 用编号列表展示 4. 标注关键概念和重要术语' },
+        { role: 'user', content: `请根据以下内容生成笔记摘要：\n\n${transcript}` }
+      ])
     ]);
     
     document.getElementById('audioProgressFill').style.width = '100%';
@@ -1540,10 +1570,10 @@ async function processUploadedAudio() {
     
     let html = '';
     if (mindmap) {
-      html += `<div class="card"><h3>🧠 思维导图</h3><pre style="white-space:pre-wrap;font-size:14px;line-height:1.8;margin-top:12px;">${escapeHtml(mindmap)}</pre></div>`;
+      html += `<div class="card"><h3 style="margin-bottom:12px;">🧠 思维导图</h3><div style="background:#FFF8F0;border-radius:8px;padding:16px;white-space:pre-wrap;font-size:14px;line-height:2;font-family:monospace;">${escapeHtml(mindmap)}</div></div>`;
     }
     if (notes) {
-      html += `<div class="card"><h3>📝 笔记摘要</h3><div style="margin-top:12px;line-height:1.8;">${formatAiReply(notes)}</div></div>`;
+      html += `<div class="card"><h3 style="margin-bottom:12px;">📝 笔记摘要</h3><div contenteditable="true" style="line-height:1.8;padding:12px;border:1px solid var(--border);border-radius:8px;min-height:100px;outline:none;" onclick="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">${formatAiReply(notes)}</div><p style="font-size:12px;color:#999;margin-top:8px;">💡 点击笔记内容可直接编辑修改</p></div>`;
     }
     document.getElementById('uploadResult').innerHTML = html;
   };

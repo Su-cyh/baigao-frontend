@@ -371,6 +371,11 @@
           <h3>AI 服务配置</h3>
           <p style="color:#666;margin:8px 0;">DeepSeek API Key（必填，用于AI出题、白糕聊天等功能）</p>
           <input type="password" id="settingApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="margin-bottom:8px;">
+          <p style="color:#666;margin:8px 0;">AI 模型选择</p>
+          <select id="settingModel" style="margin-bottom:8px;">
+            <option value="deepseek-chat">DeepSeek-V3（快速，日常使用）</option>
+            <option value="deepseek-reasoner">DeepSeek-R1（深度推理，更聪明但较慢）</option>
+          </select>
           <p style="color:#666;margin:8px 0;">后端服务地址（可选，如已部署后端可填写）</p>
           <input type="text" id="settingBackendUrl" placeholder="例如：https://your-backend.onrender.com（可留空）">
           <button class="btn btn-primary" style="margin-top:10px;" onclick="saveSettings()">保存配置</button>
@@ -421,9 +426,11 @@ function getBackendUrl() {
 function saveSettings() {
   const key = document.getElementById('settingApiKey').value.trim();
   const url = document.getElementById('settingBackendUrl').value.trim();
+  const model = document.getElementById('settingModel').value;
   localStorage.setItem('deepseek_api_key', key);
   localStorage.setItem('api_backend_url', url);
-  showToast('配置已保存');
+  localStorage.setItem('baigao_model', model);
+  showToast('配置已保存（模型：' + document.getElementById('settingModel').selectedOptions[0].text + '）');
 }
 
 // ========== File Parser ==========
@@ -477,7 +484,7 @@ async function callDeepSeek(messages, options = {}) {
         'Authorization': 'Bearer ' + apiKey
       },
       body: JSON.stringify({ 
-        model: 'deepseek-chat',
+        model: localStorage.getItem('baigao_model') || 'deepseek-chat',
         messages: messages,
         ...options 
       })
@@ -1794,6 +1801,8 @@ function importData(e) {
 // ========== Init ==========
 document.getElementById('settingBackendUrl').value = getBackendUrl();
 document.getElementById('settingApiKey').value = getApiKey();
+const savedModel = localStorage.getItem('baigao_model');
+if (savedModel) document.getElementById('settingModel').value = savedModel;
 updateStats();
 
 // AI Chat window CSS

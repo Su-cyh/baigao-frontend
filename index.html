@@ -194,6 +194,7 @@
           <div class="exam-tab active" onclick="switchExamTab('file')">资料出题</div>
           <div class="exam-tab" onclick="switchExamTab('organize')">整理试卷</div>
           <div class="exam-tab" onclick="switchExamTab('extend')">延伸出题</div>
+          <div class="exam-tab" onclick="switchExamTab('history')">📚 我的试卷</div>
         </div>
         
         <div class="exam-panel active" id="exam-file-panel">
@@ -245,33 +246,66 @@
             <div id="scoreCard" style="display:none;margin-top:16px;padding:16px;background:#FFF8F0;border-radius:8px;"></div>
           </div>
         </div>
+
+        <!-- 我的试卷 -->
+        <div class="exam-panel" id="exam-history-panel">
+          <div id="savedExamsList"></div>
+          <div id="savedExamPreview" style="display:none;margin-top:20px;"></div>
+        </div>
       </div>
       
       <!-- 录音笔记 -->
       <div class="page" id="page-recorder">
         <h1 class="page-title">录音笔记</h1>
-        <div class="card">
-          <h3>上传音频文件</h3>
-          <div class="audio-upload-card">
-            <div class="audio-upload-zone" onclick="document.getElementById('audioFileInput').click()">
-              <p>🎵 点击选择音频文件</p>
-              <p style="font-size:12px;color:#999;margin-top:8px;">支持 mp3/wav/ogg/m4a 等格式</p>
+        <div style="display:flex;gap:10px;margin-bottom:20px;">
+          <button class="btn btn-primary" id="recModeBtn" onclick="switchRecMode('live')">🎙️ 实时录音</button>
+          <button class="btn" id="uploadModeBtn" onclick="switchRecMode('upload')">📁 上传文件</button>
+        </div>
+
+        <!-- 实时录音模式 -->
+        <div id="recLivePanel">
+          <div style="display:flex;gap:20px;height:calc(100vh - 220px);">
+            <div style="flex:1;display:flex;flex-direction:column;">
+              <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <h3>📝 实时转写</h3>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span id="recTimer" style="font-size:14px;color:#999;font-variant-numeric:tabular-nums;">00:00</span>
+                    <button class="btn btn-primary" id="recStartBtn" onclick="toggleLiveRecord()" style="border-radius:50%;width:48px;height:48px;font-size:20px;padding:0;">🎤</button>
+                  </div>
+                </div>
+                <div id="liveTranscript" style="flex:1;overflow-y:auto;font-size:15px;line-height:1.8;color:#555;white-space:pre-wrap;">点击麦克风按钮开始录音...</div>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;">
+              <div class="card" style="flex:1;overflow-y:auto;">
+                <h3 style="margin-bottom:12px;">📋 AI 笔记</h3>
+                <div id="liveNotes" style="font-size:14px;line-height:1.8;color:#555;">录音内容会实时整理成笔记...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 上传文件模式 -->
+        <div id="recUploadPanel" style="display:none;">
+          <div class="card">
+            <h3 style="margin-bottom:12px;">上传音频文件</h3>
+            <div class="upload-zone" onclick="document.getElementById('audioFileInput').click()">
+              <p style="font-size:16px;">🎵 点击选择音频文件</p>
+              <p style="font-size:13px;color:#999;margin-top:8px;">支持 mp3/wav/ogg/m4a 等格式</p>
             </div>
             <input type="file" id="audioFileInput" style="display:none" accept="audio/*" onchange="handleAudioFileSelect(event)">
           </div>
-          <div class="audio-player-wrap" id="audioPlayerWrap">
+          <div class="card" id="uploadPlayerCard" style="display:none;">
             <audio id="audioPlayer" controls style="width:100%;margin-bottom:12px;"></audio>
-            <div style="display:flex;gap:10px;">
-              <button class="audio-transcribe-btn" onclick="audioAutoGenerate('mindmap')">🧠 生成思维导图</button>
-              <button class="audio-transcribe-btn" onclick="audioAutoGenerate('notes')">📝 生成笔记</button>
-            </div>
-            <div class="audio-progress" id="audioProgress">
+            <button class="btn btn-primary" onclick="processUploadedAudio()" style="width:100%;">🚀 生成思维导图 + 笔记</button>
+            <div class="audio-progress" id="audioProgress" style="margin-top:10px;">
               <div class="audio-progress-bar"><div class="audio-progress-bar-fill" id="audioProgressFill"></div></div>
               <div class="audio-progress-text" id="audioProgressText">识别中...</div>
             </div>
           </div>
+          <div id="uploadResult" style="margin-top:16px;"></div>
         </div>
-        <div id="audioResult" style="display:none;margin-top:20px;"></div>
       </div>
       
       <!-- 论坛 -->
@@ -415,6 +449,16 @@ async function callDeepSeek(messages, options = {}) {
   }
 }
 
+// 清理AI返回的JSON字符串，去除markdown代码块标记
+function cleanJsonResponse(text) {
+  if (!text) return text;
+  // 去除markdown代码块标记 ```json ... ``` 或 ``` ... ```
+  text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+  // 去除首尾空白
+  text = text.trim();
+  return text;
+}
+
 // ========== Navigation ==========
 function switchPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -445,6 +489,7 @@ function switchExamTab(tab) {
   event.currentTarget.classList.add('active');
   document.querySelectorAll('.exam-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('exam-' + tab + '-panel').classList.add('active');
+  if (tab === 'history') renderSavedExams();
 }
 
 async function handleExamFile(e) {
@@ -460,11 +505,14 @@ async function handleExamFile(e) {
     ]);
     if (result) {
       try {
-        const exam = JSON.parse(result);
+        const cleaned = cleanJsonResponse(result);
+        const exam = JSON.parse(cleaned);
         currentExam = { title: exam.title || 'AI 生成试卷', questions: exam.questions, date: new Date().toISOString(), source: 'ai' };
         showExamPreview(currentExam);
+        showToast('试卷生成成功！');
       } catch(err) {
-        showToast('试卷格式错误');
+        showToast('试卷格式错误，请重试');
+        console.log('JSON解析失败:', result);
       }
     }
   };
@@ -491,11 +539,14 @@ async function organizeQuestionsToExam() {
   ]);
   if (result) {
     try {
-      const exam = JSON.parse(result);
+      const cleaned = cleanJsonResponse(result);
+      const exam = JSON.parse(cleaned);
       currentExam = { title: exam.title || '整理试卷', questions: exam.questions, date: new Date().toISOString(), source: 'organize' };
       showExamPreview(currentExam);
+      showToast('整理成功！');
     } catch(err) {
-      showToast('整理失败，请检查格式');
+      showToast('整理失败，请重试');
+      console.log('JSON解析失败:', result);
     }
   }
 }
@@ -516,11 +567,14 @@ async function extendExamQuestions() {
   ]);
   if (result) {
     try {
-      const exam = JSON.parse(result);
+      const cleaned = cleanJsonResponse(result);
+      const exam = JSON.parse(cleaned);
       currentExam = { title: exam.title || '延伸试卷', questions: exam.questions, date: new Date().toISOString(), source: 'extend' };
       showExamPreview(currentExam);
+      showToast('延伸题生成成功！');
     } catch(err) {
-      showToast('生成失败');
+      showToast('生成失败，请重试');
+      console.log('JSON解析失败:', result);
     }
   }
 }
@@ -629,9 +683,108 @@ async function submitAnswers() {
 function saveExam() {
   if (!currentExam) return;
   let exams = JSON.parse(localStorage.getItem('saved_exams') || '[]');
+  currentExam.saveTime = new Date().toISOString();
   exams.push(currentExam);
   localStorage.setItem('saved_exams', JSON.stringify(exams));
   showToast('试卷已保存');
+  updateStats();
+  renderSavedExams();
+}
+
+// ========== 我的试卷 ==========
+function renderSavedExams() {
+  const exams = JSON.parse(localStorage.getItem('saved_exams') || '[]');
+  const container = document.getElementById('savedExamsList');
+  
+  if (exams.length === 0) {
+    container.innerHTML = '<div class="card" style="text-align:center;color:#8B7355;padding:40px;"><p>还没有保存的试卷</p><p style="font-size:14px;margin-top:8px;">生成试卷后点击"保存试卷"即可在这里查看</p></div>';
+    return;
+  }
+  
+  let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+  exams.forEach((exam, idx) => {
+    const date = exam.saveTime ? new Date(exam.saveTime).toLocaleString('zh-CN') : new Date(exam.date).toLocaleString('zh-CN');
+    const qCount = exam.questions ? exam.questions.length : 0;
+    const sourceMap = { 'ai': '资料出题', 'organize': '整理试卷', 'extend': '延伸出题' };
+    const source = sourceMap[exam.source] || '未知';
+    
+    html += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:16px;">
+      <div>
+        <h3 style="margin:0 0 4px 0;font-size:16px;">${escapeHtml(exam.title || '未命名试卷')}</h3>
+        <p style="margin:0;font-size:13px;color:#8B7355;">${source} · ${qCount} 题 · ${date}</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="openSavedExam(${idx})">查看</button>
+        <button class="btn" onclick="deleteSavedExam(${idx})" style="color:#c0392b;">删除</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function openSavedExam(idx) {
+  const exams = JSON.parse(localStorage.getItem('saved_exams') || '[]');
+  const exam = exams[idx];
+  if (!exam) return;
+  
+  currentExam = exam;
+  currentAnswers = {};
+  isAnswering = false;
+  
+  const preview = document.getElementById('savedExamPreview');
+  document.getElementById('scoreCard').style.display = 'none';
+  document.getElementById('startAnswerBtn').style.display = '';
+  document.getElementById('submitBtn').style.display = 'none';
+  
+  let html = `<div class="card">
+    <h2>${escapeHtml(exam.title || '未命名试卷')}</h2>
+    <div id="examContent">`;
+  
+  exam.questions.forEach((q, i) => {
+    html += `<div class="question-item" id="q-${i}">
+      <div class="q-number">${i + 1}. [${q.type}]</div>
+      <div class="q-text">${escapeHtml(q.content)}</div>
+      <div id="q-answer-${i}">`;
+    
+    if (q.type === '选择题' && q.options) {
+      q.options.forEach((opt, oi) => {
+        html += `<div class="q-option" data-q="${i}" data-opt="${oi}" onclick="selectOption(${i}, ${oi})">${opt}</div>`;
+      });
+    } else if (q.type === '判断题') {
+      html += `<div class="q-option" data-q="${i}" onclick="selectJudge(${i}, '正确')">✔ 正确</div>`;
+      html += `<div class="q-option" data-q="${i}" onclick="selectJudge(${i}, '错误')">✘ 错误</div>`;
+    } else if (q.type === '填空题') {
+      html += `<input type="text" placeholder="请输入答案" id="fill-input-${i}">`;
+    } else if (q.type === '简答题') {
+      html += `<textarea placeholder="请输入答案" id="short-input-${i}"></textarea>`;
+    }
+    
+    html += `</div><div id="q-result-${i}"></div>`;
+    html += `<button class="ask-baigao-btn" onclick="askBaigaoAboutQuestion(${i})">🐱 问白糕</button>`;
+    html += `</div>`;
+  });
+  
+  html += `</div>
+    <div style="margin-top:16px;display:flex;gap:10px;">
+      <button class="btn" onclick="startAnswering()">开始答题</button>
+      <button class="btn btn-primary" id="submitBtn" style="display:none;" onclick="submitAnswers()">提交答卷</button>
+    </div>
+    <div id="scoreCard" style="display:none;margin-top:16px;padding:16px;background:#FFF8F0;border-radius:8px;"></div>
+  </div>`;
+  
+  preview.innerHTML = html;
+  preview.style.display = '';
+  preview.scrollIntoView({ behavior: 'smooth' });
+}
+
+function deleteSavedExam(idx) {
+  if (!confirm('确定要删除这份试卷吗？')) return;
+  let exams = JSON.parse(localStorage.getItem('saved_exams') || '[]');
+  exams.splice(idx, 1);
+  localStorage.setItem('saved_exams', JSON.stringify(exams));
+  showToast('已删除');
+  renderSavedExams();
   updateStats();
 }
 
@@ -1130,101 +1283,206 @@ function sendPrivateMsg() {
 }
 
 // ========== Audio Recorder ==========
-function handleAudioFileSelect(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  const player = document.getElementById('audioPlayer');
-  player.src = url;
-  document.getElementById('audioPlayerWrap').style.display = '';
-  document.getElementById('audioResult').style.display = 'none';
+let isRecording = false;
+let liveRecognition = null;
+let liveTranscript = '';
+let recTimerInterval = null;
+let recStartTime = null;
+let liveNotesTimer = null;
+
+function switchRecMode(mode) {
+  document.getElementById('recLivePanel').style.display = mode === 'live' ? '' : 'none';
+  document.getElementById('recUploadPanel').style.display = mode === 'upload' ? '' : 'none';
+  document.getElementById('recModeBtn').className = mode === 'live' ? 'btn btn-primary' : 'btn';
+  document.getElementById('uploadModeBtn').className = mode === 'upload' ? 'btn btn-primary' : 'btn';
 }
 
-async function audioAutoGenerate(target) {
-  const player = document.getElementById('audioPlayer');
-  if (!player.src) { showToast('请先选择音频文件'); return; }
-  
-  document.getElementById('audioProgress').style.display = '';
-  document.getElementById('audioProgressText').textContent = '识别中...';
-  
-  player.currentTime = 0;
-  player.play();
-  
-  // 使用 Web Speech API 识别
+function toggleLiveRecord() {
+  if (isRecording) { stopLiveRecord(); } else { startLiveRecord(); }
+}
+
+function startLiveRecord() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
     showToast('浏览器不支持语音识别，请使用 Chrome');
     return;
   }
   
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = false;
-  recognition.lang = 'zh-CN';
-  fullTranscript = '';
+  liveRecognition = new SpeechRecognition();
+  liveRecognition.continuous = true;
+  liveRecognition.interimResults = true;
+  liveRecognition.lang = 'zh-CN';
+  liveTranscript = '';
   
-  recognition.onresult = (event) => {
-    for (let i = event.resultIndex; i < event.results.length; i++) {
+  document.getElementById('liveTranscript').textContent = '';
+  document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">录音中，AI 正在整理笔记...</span>';
+  document.getElementById('recStartBtn').style.background = '#c0392b';
+  document.getElementById('recStartBtn').textContent = '⏹';
+  isRecording = true;
+  
+  // 计时器
+  recStartTime = Date.now();
+  document.getElementById('recTimer').textContent = '00:00';
+  recTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - recStartTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('recTimer').textContent = m + ':' + s;
+  }, 1000);
+  
+  let lastFinalIndex = 0;
+  
+  liveRecognition.onresult = (event) => {
+    let interim = '';
+    for (let i = lastFinalIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
-        fullTranscript += event.results[i][0].transcript + ' ';
+        liveTranscript += event.results[i][0].transcript + ' ';
+        lastFinalIndex = i + 1;
+      } else {
+        interim += event.results[i][0].transcript;
       }
+    }
+    // 显示实时转写
+    document.getElementById('liveTranscript').innerHTML = 
+      escapeHtml(liveTranscript) + '<span style="color:#bbb;">' + escapeHtml(interim) + '</span>';
+    document.getElementById('liveTranscript').scrollTop = document.getElementById('liveTranscript').scrollHeight;
+    
+    // 每15秒自动整理一次笔记
+    if (!liveNotesTimer) {
+      liveNotesTimer = setTimeout(() => {
+        generateLiveNotes(liveTranscript);
+        liveNotesTimer = null;
+      }, 15000);
     }
   };
   
-  recognition.onend = async () => {
-    document.getElementById('audioProgress').style.display = 'none';
+  liveRecognition.onend = () => {
+    if (isRecording) {
+      // 自动重启（Chrome会间歇停止）
+      try { liveRecognition.start(); } catch(e) {}
+    }
+  };
+  
+  liveRecognition.onerror = (e) => {
+    if (e.error !== 'aborted' && e.error !== 'no-speech') {
+      console.log('Speech recognition error:', e.error);
+    }
+  };
+  
+  liveRecognition.start();
+}
+
+function stopLiveRecord() {
+  isRecording = false;
+  if (liveRecognition) { try { liveRecognition.stop(); } catch(e) {} }
+  clearInterval(recTimerInterval);
+  clearTimeout(liveNotesTimer);
+  
+  document.getElementById('recStartBtn').style.background = '#7A5C42';
+  document.getElementById('recStartBtn').textContent = '🎤';
+  
+  // 最后整理一次笔记
+  if (liveTranscript.trim()) {
+    generateLiveNotes(liveTranscript);
+  }
+}
+
+async function generateLiveNotes(text) {
+  if (!text.trim()) return;
+  document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">AI 正在整理笔记...</span>';
+  const result = await callDeepSeek([
+    { role: 'user', content: `你是一个学习笔记整理助手。根据以下实时录音转写的文字内容，整理出一份清晰的笔记。要求：\n1. 提取关键要点\n2. 按主题分段\n3. 用编号和缩进展示层级\n4. 标注重要概念\n\n转写内容：\n${text}` }
+  ]);
+  if (result) {
+    document.getElementById('liveNotes').innerHTML = formatAiReply(result);
+    document.getElementById('liveNotes').contentEditable = 'true';
+    document.getElementById('liveNotes').style.border = '1px dashed #E8DDD0';
+    document.getElementById('liveNotes').style.padding = '8px';
+    document.getElementById('liveNotes').style.borderRadius = '6px';
+    document.getElementById('liveNotes').style.outline = 'none';
+  }
+}
+
+// === 上传文件模式 ===
+function handleAudioFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  document.getElementById('audioPlayer').src = url;
+  document.getElementById('uploadPlayerCard').style.display = '';
+  document.getElementById('uploadResult').innerHTML = '';
+}
+
+async function processUploadedAudio() {
+  const player = document.getElementById('audioPlayer');
+  if (!player.src) { showToast('请先选择音频文件'); return; }
+  
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('浏览器不支持语音识别，请使用 Chrome');
+    return;
+  }
+  
+  document.getElementById('audioProgress').style.display = '';
+  document.getElementById('audioProgressText').textContent = '正在识别音频内容...';
+  document.getElementById('audioProgressFill').style.width = '30%';
+  
+  player.currentTime = 0;
+  player.play();
+  
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.lang = 'zh-CN';
+  let transcript = '';
+  
+  rec.onresult = (event) => {
+    for (let i = 0; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        transcript += event.results[i][0].transcript + ' ';
+      }
+    }
+    document.getElementById('audioProgressFill').style.width = '60%';
+  };
+  
+  rec.onend = async () => {
+    document.getElementById('audioProgressFill').style.width = '80%';
     player.pause();
     
-    if (!fullTranscript.trim()) {
-      showToast('未识别到语音内容');
+    if (!transcript.trim()) {
+      document.getElementById('audioProgress').style.display = 'none';
+      showToast('未识别到语音内容，请检查音频是否清晰');
       return;
     }
     
-    document.getElementById('audioProgressText').textContent = '识别完成，正在生成...';
+    document.getElementById('audioProgressText').textContent = '识别完成，正在生成思维导图和笔记...';
     
-    if (target === 'mindmap') {
-      await generateMindMap(fullTranscript);
-    } else if (target === 'notes') {
-      await generateNotes(fullTranscript);
-    }
-  };
-  
-  recognition.onerror = () => {
+    // 同时生成思维导图和笔记
+    const [mindmap, notes] = await Promise.all([
+      callDeepSeek([{ role: 'user', content: `根据以下内容生成思维导图的 Markdown 格式（使用缩进和层级结构），要求结构清晰、重点突出、层次分明：\n\n${transcript}` }]),
+      callDeepSeek([{ role: 'user', content: `根据以下内容生成一份简洁清晰的笔记摘要。要求：\n1. 提取核心要点\n2. 按主题分段\n3. 用编号列表展示\n4. 标注关键概念\n\n内容：\n${transcript}` }])
+    ]);
+    
+    document.getElementById('audioProgressFill').style.width = '100%';
     document.getElementById('audioProgress').style.display = 'none';
-    showToast('语音识别出错');
+    
+    let html = '';
+    if (mindmap) {
+      html += `<div class="card"><h3>🧠 思维导图</h3><pre style="white-space:pre-wrap;font-size:14px;line-height:1.8;margin-top:12px;">${escapeHtml(mindmap)}</pre></div>`;
+    }
+    if (notes) {
+      html += `<div class="card"><h3>📝 笔记摘要</h3><div style="margin-top:12px;line-height:1.8;">${formatAiReply(notes)}</div></div>`;
+    }
+    document.getElementById('uploadResult').innerHTML = html;
   };
   
-  recognition.start();
-}
-
-async function generateMindMap(text) {
-  showToast('正在生成思维导图...');
-  const result = await callDeepSeek([
-    { role: 'user', content: `根据以下内容生成思维导图的 Markdown 格式（使用缩进表示层级），要求结构清晰，重点突出：\n\n${text}` }
-  ]);
-  if (result) {
-    document.getElementById('audioResult').style.display = '';
-    document.getElementById('audioResult').innerHTML = `
-      <div class="card">
-        <h3>🧠 思维导图</h3>
-        <pre style="white-space:pre-wrap;font-size:14px;line-height:1.8;margin-top:12px;">${escapeHtml(result)}</pre>
-      </div>`;
-  }
-}
-
-async function generateNotes(text) {
-  showToast('正在生成笔记...');
-  const result = await callDeepSeek([
-    { role: 'user', content: `根据以下内容生成简洁的笔记摘要，提取关键要点，用编号列表展示：\n\n${text}` }
-  ]);
-  if (result) {
-    document.getElementById('audioResult').style.display = '';
-    document.getElementById('audioResult').innerHTML = `
-      <div class="card">
-        <h3>📝 笔记摘要</h3>
-        <div style="margin-top:12px;line-height:1.8;">${escapeHtml(result)}</div>
-      </div>`;
-  }
+  rec.onerror = () => {
+    document.getElementById('audioProgress').style.display = 'none';
+    player.pause();
+    showToast('语音识别出错，请重试');
+  };
+  
+  rec.start();
 }
 
 // ========== AI Chat (白糕) ==========

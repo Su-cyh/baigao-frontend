@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>白糕平台</title>
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --text: #000000;
+      --text-sec: #8B7355;
+      --border: #CCCCCC;
+      --hover: #E5E5E5;
+      --accent: #333333;
+      --topbar-h: 56px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    
+    /* === Top Bar === */
+    .top-bar { position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-h); background: #000000; color: #FFFFFF; display: flex; align-items: center; padding: 0 24px; z-index: 900; }
+    .top-bar-logo { font-size: 18px; font-weight: 800; margin-right: 40px; color: #FFFFFF; }
+    .top-bar-nav { display: flex; gap: 4px; }
+    .top-bar-nav .nav-item { padding: 8px 18px; cursor: pointer; border-radius: 8px; color: #D4BFA8; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+    .top-bar-nav .nav-item:hover { color: #FFFFFF; background: rgba(255,255,255,0.1); }
+    .top-bar-nav .nav-item.active { color: #FFFFFF; background: rgba(255,255,255,0.15); }
+    .top-bar-nav .nav-icon { margin-right: 6px; }
+    
+    .app-container { display: flex; margin-top: var(--topbar-h); height: calc(100vh - var(--topbar-h)); }
+    .sidebar { display: none; }
+    .main-content { flex: 1; overflow-y: auto; padding: 30px; background: var(--bg); }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; color: #000000; }
+    .btn { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+    .btn:hover { background: var(--hover); }
+    .btn-primary { background: #000000; color: #fff; border-color: #000000; }
+    .btn-primary:hover { background: #000000; }
+    input[type="text"], input[type="password"], textarea, select { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; width: 100%; background: #fff; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #333333; }
+    .card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 16px; }
+    .toast { position: fixed; top: 70px; right: 20px; background: #000000; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; z-index: 10000; animation: slideIn 0.3s; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    
+    /* === Exam Center === */
+    .exam-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .exam-tab { padding: 8px 18px; cursor: pointer; border-radius: 8px 8px 0 0; font-weight: 500; color: var(--text-sec); }
+    .exam-tab.active { background: #000000; color: #fff; }
+    .exam-panel { display: none; }
+    .exam-panel.active { display: block; }
+    .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; background: #fff; }
+    .upload-zone:hover { border-color: #333333; background: #F5F5F5; }
+    .question-item { padding: 16px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; background: #fff; }
+    .q-number { font-weight: 700; margin-bottom: 8px; font-size: 15px; }
+    .q-option { padding: 10px 14px; margin: 4px 0; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+    .q-option:hover { border-color: #333333; background: #F5F5F5; }
+    .q-option.selected { background: #000000; color: #fff; border-color: #000000; }
+    .q-option.correct { background: #5C8A5C; color: #fff; border-color: #5C8A5C; }
+    .q-option.wrong { background: #C47A6C; color: #fff; border-color: #C47A6C; }
+    
+    /* === Forum === */
+    .forum-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .forum-tab { padding: 8px 18px; cursor: pointer; border-radius: 8px; background: #E5E5E5; font-weight: 500; color: var(--text-sec); }
+    .forum-tab.active { background: #000000; color: #fff; }
+    .forum-anon-bar { padding: 12px; background: #F5F5F5; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .anon-tag { background: #000000; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .school-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 16px; }
+    .school-badge { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; background: #E5E5E5; cursor: pointer; white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--text-sec); }
+    .school-badge.active { background: #000000; color: #fff; }
+    .school-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; }
+    .forum-post-list { display: grid; gap: 12px; }
+    .forum-post-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer; }
+    .forum-post-card:hover { background: var(--hover); }
+    .post-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .post-card-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 700; }
+    .anon-name { font-size: 13px; color: var(--text-sec); }
+    .post-time { font-size: 12px; color: #999; }
+    .post-card-school { padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: auto; }
+    .post-card-title { font-weight: 600; margin-bottom: 4px; }
+    .post-card-preview { color: var(--text-sec); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .post-card-footer { display: flex; gap: 16px; margin-top: 10px; font-size: 13px; color: var(--text-sec); }
+    .forum-post-detail { display: none; }
+    .forum-post-detail.active { display: block; }
+    .back-btn { cursor: pointer; color: var(--accent); margin-bottom: 16px; }
+    .post-detail-content { margin: 16px 0; line-height: 1.8; }
+    .post-detail-actions { display: flex; gap: 12px; margin: 16px 0; }
+    .action-btn { padding: 6px 14px; border-radius: 20px; background: #f5f5f5; cursor: pointer; font-size: 13px; }
+    .action-btn:hover { background: #eee; }
+    .action-btn.liked { background: #ffebee; color: #c00; }
+    .reply-section { margin-top: 20px; }
+    .reply-item { display: flex; gap: 10px; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+    .reply-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .reply-content { flex: 1; }
+    .reply-name { font-size: 13px; color: var(--text-sec); }
+    .reply-name .reply-time { margin-left: 10px; font-size: 11px; color: #999; }
+    .reply-text { margin-top: 4px; }
+    .reply-input-area { display: flex; gap: 10px; margin-top: 16px; }
+    .reply-input-area input { flex: 1; }
+    .forum-private-chat { display: none; height: calc(100vh - 200px); }
+    .forum-private-chat.active { display: flex; }
+    .chat-contact-list { width: 250px; border-right: 1px solid var(--border); overflow-y: auto; }
+    .chat-contact-item { display: flex; align-items: center; gap: 10px; padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+    .chat-contact-item:hover { background: var(--hover); }
+    .chat-contact-item.active { background: #eee; }
+    .chat-contact-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 700; }
+    .chat-contact-info { flex: 1; min-width: 0; }
+    .chat-contact-name { font-size: 13px; font-weight: 600; }
+    .chat-contact-last { font-size: 12px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chat-window { flex: 1; display: flex; flex-direction: column; }
+    .chat-window-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; }
+    .chat-window-body { flex: 1; padding: 16px; overflow-y: auto; }
+    .chat-bubble { padding: 8px 12px; border-radius: 12px; margin: 6px 0; max-width: 70%; }
+    .chat-bubble.mine { background: var(--accent); color: #fff; margin-left: auto; }
+    .chat-bubble.other { background: #f0f0f0; }
+    .chat-window-input { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); }
+    .chat-window-input input { flex: 1; }
+    .forum-fab { position: fixed; bottom: 30px; right: 30px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: #fff; border: none; font-size: 24px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.2); display: none; }
+    .forum-fab.show { display: block; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .modal h3 { margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    
+    /* === Audio Recorder === */
+    .audio-upload-card { border: 2px dashed var(--border); border-radius: 8px; padding: 30px; text-align: center; margin: 16px 0; }
+    .audio-upload-zone { cursor: pointer; padding: 20px; }
+    .audio-upload-zone:hover { background: var(--hover); }
+    .audio-player-wrap { margin: 16px 0; display: none; }
+    .audio-transcribe-btn { padding: 10px 20px; border-radius: 6px; background: var(--accent); color: #fff; border: none; cursor: pointer; margin: 4px; }
+    .audio-transcribe-btn:disabled { opacity: 0.5; }
+    .audio-progress { display: none; margin-top: 8px; }
+    .audio-progress-bar { height: 4px; background: #e5e5e5; border-radius: 2px; overflow: hidden; }
+    .audio-progress-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+    .audio-progress-text { font-size: 11px; color: var(--text-sec); margin-top: 4px; }
+    
+    /* === Friend System === */
+    .friend-requests-bar { padding: 12px 16px; border-bottom: 1px solid #eee; }
+    .friend-requests-bar h4 { font-size: 13px; color: #666; margin-bottom: 8px; }
+    .friend-request-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+    .friend-request-item:last-child { border-bottom: none; }
+    .friend-req-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .friend-req-info { flex: 1; min-width: 0; }
+    .friend-req-name { font-size: 13px; font-weight: 600; }
+    .friend-req-time { font-size: 11px; color: #999; }
+    .friend-req-actions { display: flex; gap: 6px; }
+    .friend-req-btn { padding: 4px 10px; border-radius: 12px; border: none; font-size: 12px; cursor: pointer; }
+    .friend-req-btn.accept { background: #000; color: #fff; }
+    .friend-req-btn.reject { background: #eee; color: #666; }
+    .friend-list-header { padding: 12px 16px 6px; font-size: 12px; color: #999; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .chat-contact-item .remove-friend-btn { display: none; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; }
+    .chat-contact-item:hover .remove-friend-btn { display: block; }
+    .chat-contact-item { position: relative; }
+    .ask-baigao-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 16px; background: #f8f8f8; border: 1px solid #e0e0e0; font-size: 12px; cursor: pointer; color: #666; margin-top: 6px; }
+    .ask-baigao-btn:hover { background: #eee; border-color: #ccc; }
+    .chat-context-bar { padding: 8px 12px; background: #f8f8f8; border-bottom: 1px solid #eee; font-size: 12px; color: #666; display: flex; align-items: center; gap: 6px; }
+    .chat-context-bar .ctx-close { cursor: pointer; margin-left: auto; color: #999; }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <div class="top-bar">
+    <span class="top-bar-logo">🐱 白糕平台</span>
+    <div class="top-bar-nav">
+      <div class="nav-item active" onclick="switchPage('home')"><span class="nav-icon">🏠</span>首页</div>
+      <div class="nav-item" onclick="switchPage('exam')"><span class="nav-icon">📝</span>试卷中心</div>
+      <div class="nav-item" onclick="switchPage('recorder')"><span class="nav-icon">🎙️</span>录音笔记</div>
+      <div class="nav-item" onclick="switchPage('forum')"><span class="nav-icon">💬</span>论坛</div>
+      <div class="nav-item" onclick="switchPage('profile')"><span class="nav-icon">👤</span>我的</div>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <div class="main-content">
+      <!-- 首页 -->
+      <div class="page active" id="page-home">
+        <h1 class="page-title">欢迎使用白糕平台</h1>
+        <div class="card">
+          <h3>智能学习助手</h3>
+          <p>AI 驱动的在线学习平台，支持试卷生成、录音转文字、智能笔记等功能。</p>
+        </div>
+      </div>
+      
+      <!-- 试卷中心 -->
+      <div class="page" id="page-exam">
+        <h1 class="page-title">试卷中心</h1>
+        <div class="exam-tabs">
+          <div class="exam-tab active" onclick="switchExamTab('file')">资料出题</div>
+          <div class="exam-tab" onclick="switchExamTab('organize')">整理试卷</div>
+          <div class="exam-tab" onclick="switchExamTab('extend')">延伸出题</div>
+        </div>
+        
+        <div class="exam-panel active" id="exam-file-panel">
+          <div class="upload-zone" onclick="document.getElementById('examFileInput').click()">
+            <p>📄 点击上传学习资料（PDF/Word/TXT）</p>
+            <p style="font-size:12px;color:#999;margin-top:8px;">AI 将根据资料自动生成试卷</p>
+          </div>
+          <input type="file" id="examFileInput" style="display:none" accept=".pdf,.doc,.docx,.txt" onchange="handleExamFile(event)">
+        </div>
+        
+        <div class="exam-panel" id="exam-organize-panel">
+          <div class="card">
+            <h3 style="margin-bottom:12px;">整理试卷</h3>
+            <p style="color:#666;margin-bottom:12px;">粘贴或上传题目，AI 整理成规范试卷</p>
+            <textarea id="organizeTextInput" rows="8" placeholder="在这里粘贴题目内容..."></textarea>
+            <div style="margin-top:12px;display:flex;gap:10px;">
+              <button class="btn" onclick="document.getElementById('organizeFileInput').click()">📎 上传文件</button>
+              <button class="btn btn-primary" onclick="organizeQuestionsToExam()">整理成试卷</button>
+            </div>
+            <input type="file" id="organizeFileInput" style="display:none" accept=".pdf,.doc,.docx,.txt" onchange="handleOrganizeFile(event)">
+          </div>
+        </div>
+        
+        <div class="exam-panel" id="exam-extend-panel">
+          <div class="card">
+            <h3 style="margin-bottom:12px;">延伸出题</h3>
+            <p style="color:#666;margin-bottom:12px;">上传已有试卷，AI 分析知识点后生成新题</p>
+            <div class="upload-zone" onclick="document.getElementById('extendFileInput').click()">
+              <p>📄 点击上传试卷文件</p>
+            </div>
+            <input type="file" id="extendFileInput" style="display:none" accept=".pdf,.doc,.docx,.txt" onchange="handleExtendFile(event)">
+            <div id="extendConfig" style="display:none;margin-top:16px;">
+              <label>每题延伸数量：<select id="extendCount"><option>1</option><option selected>2</option><option>3</option></select></label>
+              <label style="margin-left:16px;">难度：<select id="extendDifficulty"><option>简单</option><option selected>中等</option><option>困难</option></select></label>
+              <button class="btn btn-primary" style="margin-left:16px;" onclick="extendExamQuestions()">生成延伸题</button>
+            </div>
+          </div>
+        </div>
+        
+        <div id="examPreview" style="display:none;margin-top:20px;">
+          <div class="card">
+            <h2 id="examPreviewTitle"></h2>
+            <div id="examContent"></div>
+            <div style="margin-top:16px;display:flex;gap:10px;">
+              <button class="btn" id="startAnswerBtn" onclick="startAnswering()">开始答题</button>
+              <button class="btn btn-primary" id="submitBtn" style="display:none;" onclick="submitAnswers()">提交答卷</button>
+              <button class="btn" onclick="saveExam()">保存试卷</button>
+            </div>
+            <div id="scoreCard" style="display:none;margin-top:16px;padding:16px;background:#f9f9f9;border-radius:8px;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 录音笔记 -->
+      <div class="page" id="page-recorder">
+        <h1 class="page-title">录音笔记</h1>
+        <div style="display:flex;gap:10px;margin-bottom:20px;">
+          <button class="btn btn-primary" id="recModeBtn" onclick="switchRecMode('live')">🎙️ 实时录音</button>
+          <button class="btn" id="uploadModeBtn" onclick="switchRecMode('upload')">📁 上传文件</button>
+        </div>
+
+        <!-- 实时录音模式 -->
+        <div id="recLivePanel">
+          <div style="display:flex;gap:20px;height:calc(100vh - 220px);">
+            <div style="flex:1;display:flex;flex-direction:column;">
+              <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <h3>📝 实时转写</h3>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span id="recTimer" style="font-size:14px;color:#999;font-variant-numeric:tabular-nums;">00:00</span>
+                    <button class="btn btn-primary" id="recStartBtn" onclick="toggleLiveRecord()" style="border-radius:50%;width:48px;height:48px;font-size:20px;padding:0;">🎤</button>
+                  </div>
+                </div>
+                <div id="liveTranscript" style="flex:1;overflow-y:auto;font-size:15px;line-height:1.8;color:#555;white-space:pre-wrap;">点击麦克风按钮开始录音...</div>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;">
+              <div class="card" style="flex:1;overflow-y:auto;">
+                <h3 style="margin-bottom:12px;">📋 AI 笔记</h3>
+                <div id="liveNotes" style="font-size:14px;line-height:1.8;color:#555;">录音内容会实时整理成笔记...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 上传文件模式 -->
+        <div id="recUploadPanel" style="display:none;">
+          <div class="card">
+            <h3 style="margin-bottom:12px;">上传音频文件</h3>
+            <div class="upload-zone" onclick="document.getElementById('audioFileInput').click()">
+              <p style="font-size:16px;">🎵 点击选择音频文件</p>
+              <p style="font-size:13px;color:#999;margin-top:8px;">支持 mp3/wav/ogg/m4a 等格式</p>
+            </div>
+            <input type="file" id="audioFileInput" style="display:none" accept="audio/*" onchange="handleAudioFileSelect(event)">
+          </div>
+          <div class="card" id="uploadPlayerCard" style="display:none;">
+            <audio id="audioPlayer" controls style="width:100%;margin-bottom:12px;"></audio>
+            <button class="btn btn-primary" onclick="processUploadedAudio()" style="width:100%;">🚀 生成思维导图 + 笔记</button>
+            <div class="audio-progress" id="audioProgress" style="margin-top:10px;">
+              <div class="audio-progress-bar"><div class="audio-progress-bar-fill" id="audioProgressFill"></div></div>
+              <div class="audio-progress-text" id="audioProgressText">识别中...</div>
+            </div>
+          </div>
+          <div id="uploadResult" style="margin-top:16px;"></div>
+        </div>
+      </div>
+      
+      <!-- 论坛 -->
+      <div class="page" id="page-forum">
+        <h1 class="page-title">论坛讨论区</h1>
+        <div class="forum-tabs">
+          <div class="forum-tab active" onclick="switchForumTab('public')">大众频道</div>
+          <div class="forum-tab" onclick="switchForumTab('private')">私聊</div>
+        </div>
+        <div id="forumPublic">
+          <div class="forum-anon-bar">
+            <span>🐱</span>
+            <span>当前身份：</span>
+            <span class="anon-tag" id="forumMyAnonId">匿名白猫#0000</span>
+            <span style="margin-left:auto;cursor:pointer;color:var(--text-sec);" onclick="refreshAnonId()">🔄 换身份</span>
+          </div>
+          <div class="school-bar" id="schoolBar"></div>
+          <div class="forum-post-list-wrap" id="forumPostListWrap">
+            <div class="forum-post-list" id="forumPostList"></div>
+          </div>
+          <div class="forum-post-detail" id="forumPostDetail">
+            <div class="post-detail-header">
+              <div class="back-btn" onclick="backToPostList()">← 返回列表</div>
+              <div id="postDetailContent"></div>
+            </div>
+          </div>
+        </div>
+        <div class="forum-private-chat" id="forumPrivateChat">
+          <div class="chat-contact-list" id="chatContactList"></div>
+          <div class="chat-window" id="chatWindow">
+            <div class="chat-empty">选择一个联系人开始聊天</div>
+          </div>
+        </div>
+        <button class="forum-fab" id="forumFab" onclick="openCreatePostModal()">✎</button>
+      </div>
+      
+      <!-- 我的 -->
+      <div class="page" id="page-profile">
+        <h1 class="page-title">个人设置</h1>
+        <div class="card">
+          <h3>AI 服务配置</h3>
+          <p style="color:#666;margin:8px 0;">DeepSeek API Key（必填，用于AI出题、白糕聊天等功能）</p>
+          <input type="password" id="settingApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="margin-bottom:8px;">
+          <p style="color:#666;margin:8px 0;">后端服务地址（可选，如已部署后端可填写）</p>
+          <input type="text" id="settingBackendUrl" placeholder="例如：https://your-backend.onrender.com（可留空）">
+          <button class="btn btn-primary" style="margin-top:10px;" onclick="saveSettings()">保存配置</button>
+        </div>
+        <div class="card">
+          <h3>数据统计</h3>
+          <p>已保存试卷：<span id="statExams">0</span> 份</p>
+          <p>论坛帖子：<span id="statPosts">0</span> 篇</p>
+        </div>
+        <div class="card">
+          <h3>数据管理</h3>
+          <button class="btn" onclick="exportData()">导出数据</button>
+          <button class="btn" onclick="document.getElementById('importInput').click()">导入数据</button>
+          <input type="file" id="importInput" style="display:none" accept=".json" onchange="importData(event)">
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- AI 助手 -->
+  <button id="aiCatButton" onclick="toggleAiChat()"><img src="data:image/png;base64,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" style="width:40px;height:40px;border-radius:50%;pointer-events:none;"></button>
+  <div class="ai-chat-window" id="aiChatWindow">
+    <div class="ai-chat-header">
+      <img src="data:image/png;base64,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" style="width:24px;height:24px;border-radius:50%;"><span class="ai-chat-title">白糕</span>
+      <button onclick="toggleAiChat()">✕</button>
+    </div>
+    <div class="ai-chat-body" id="aiChatBody">
+      <div class="ai-msg assistant">嗨～我是白糕 🐱 不管是学习上的问题还是想随便聊聊，都可以找我呀！</div>
+    </div>
+    <div class="ai-chat-input-area">
+      <input type="text" id="aiChatInput" placeholder="跟白糕说点什么..." onkeydown="if(event.key==='Enter')sendAiMessage()">
+      <button id="aiSendBtn" onclick="sendAiMessage()">发送</button>
+    </div>
+  </div>
+  
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" id="modalContent"></div>
+  </div>
+
+  <script>
+// ========== Config ==========
+function getApiKey() {
+  return localStorage.getItem('deepseek_api_key') || '';
+}
+function getBackendUrl() {
+  return localStorage.getItem('api_backend_url') || '';
+}
+function saveSettings() {
+  const key = document.getElementById('settingApiKey').value.trim();
+  const url = document.getElementById('settingBackendUrl').value.trim();
+  localStorage.setItem('deepseek_api_key', key);
+  localStorage.setItem('api_backend_url', url);
+  showToast('配置已保存');
+}
+
+// ========== Global State ==========
+let manualQuestions = [];
+let currentExam = null;
+let currentAnswers = {};
+let isAnswering = false;
+let recognition = null;
+let isRecording = false;
+let recordStartTime = null;
+let recordTimerInterval = null;
+let fullTranscript = '';
+let uploadedFiles = [];
+let pendingFriendRequestFrom = null;
+let currentViewingQuestion = null;
+let forumCurrentSchool = "全部";
+let forumCurrentPostId = null;
+let forumCurrentChatUser = null;
+let aiChatHistory = [];
+
+// ========== DeepSeek API ==========
+async function callDeepSeek(messages, options = {}) {
+  const apiKey = getApiKey();
+  if (!apiKey) { showToast('请先在"我的"页面配置 DeepSeek API Key'); return null; }
+  
+  try {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({ 
+        model: 'deepseek-chat',
+        messages: messages,
+        ...options 
+      })
+    });
+    const data = await res.json();
+    if (data.error) { showToast('AI 错误：' + (data.error.message || data.error)); return null; }
+    return data.choices?.[0]?.message?.content || null;
+  } catch(e) {
+    showToast('网络错误：' + e.message);
+    return null;
+  }
+}
+
+// ========== Navigation ==========
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  
+  if (page === 'forum') {
+    document.getElementById('forumFab').classList.add('show');
+    initForum();
+  } else {
+    document.getElementById('forumFab').classList.remove('show');
+  }
+  
+  if (page === 'profile') {
+    updateStats();
+  }
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+  document.querySelectorAll('.nav-text').forEach(t => t.style.display = t.style.display === 'none' ? '' : 'none');
+}
+
+// ========== Exam Center ==========
+function switchExamTab(tab) {
+  document.querySelectorAll('.exam-tab').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.querySelectorAll('.exam-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('exam-' + tab + '-panel').classList.add('active');
+}
+
+async function handleExamFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  showToast('正在生成试卷...');
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const content = ev.target.result;
+    const result = await callDeepSeek([
+      { role: 'user', content: `根据以下学习资料生成一份试卷，包含选择题、填空题、简答题，并给出答案：\n\n${content}` }
+    ]);
+    if (result) {
+      try {
+        const exam = JSON.parse(result);
+        currentExam = { title: exam.title || 'AI 生成试卷', questions: exam.questions, date: new Date().toISOString(), source: 'ai' };
+        showExamPreview(currentExam);
+      } catch(err) {
+        showToast('试卷格式错误');
+      }
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function handleOrganizeFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    document.getElementById('organizeTextInput').value = ev.target.result;
+  };
+  reader.readAsText(file);
+}
+
+async function organizeQuestionsToExam() {
+  const text = document.getElementById('organizeTextInput').value.trim();
+  if (!text) { showToast('请先输入或上传题目'); return; }
+  
+  showToast('正在整理试卷...');
+  const result = await callDeepSeek([
+    { role: 'user', content: `将以下题目整理成规范试卷格式（JSON），包含 title 和 questions 数组，每道题包含 type、content、options（如有）、answer：\n\n${text}` }
+  ]);
+  if (result) {
+    try {
+      const exam = JSON.parse(result);
+      currentExam = { title: exam.title || '整理试卷', questions: exam.questions, date: new Date().toISOString(), source: 'organize' };
+      showExamPreview(currentExam);
+    } catch(err) {
+      showToast('整理失败，请检查格式');
+    }
+  }
+}
+
+async function handleExtendFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('extendConfig').style.display = 'block';
+  showToast('文件已加载，点击"生成延伸题"开始');
+}
+
+async function extendExamQuestions() {
+  showToast('正在生成延伸题...');
+  const count = document.getElementById('extendCount').value;
+  const diff = document.getElementById('extendDifficulty').value;
+  const result = await callDeepSeek([
+    { role: 'user', content: `根据以下试卷，按知识点生成延伸题，每题生成${count}道新题，难度${diff}。返回 JSON 格式，包含 title 和 questions 数组：\n\n[试卷内容]` }
+  ]);
+  if (result) {
+    try {
+      const exam = JSON.parse(result);
+      currentExam = { title: exam.title || '延伸试卷', questions: exam.questions, date: new Date().toISOString(), source: 'extend' };
+      showExamPreview(currentExam);
+    } catch(err) {
+      showToast('生成失败');
+    }
+  }
+}
+
+function showExamPreview(exam) {
+  currentAnswers = {};
+  isAnswering = false;
+  document.getElementById('scoreCard').style.display = 'none';
+  document.getElementById('startAnswerBtn').style.display = '';
+  document.getElementById('submitBtn').style.display = 'none';
+  document.getElementById('examPreviewTitle').textContent = exam.title;
+
+  let html = `<div class="exam-header"><h2>${exam.title}</h2><p>共 ${exam.questions.length} 题</p></div>`;
+  
+  exam.questions.forEach((q, i) => {
+    html += `<div class="question-item" id="q-${i}">
+      <div class="q-number">${i + 1}. [${q.type}]</div>
+      <div class="q-text">${q.content}</div>
+      <div id="q-answer-${i}">`;
+    
+    if (q.type === '选择题' && q.options) {
+      q.options.forEach((opt, oi) => {
+        html += `<div class="q-option" data-q="${i}" data-opt="${oi}" onclick="selectOption(${i}, ${oi})">${opt}</div>`;
+      });
+    } else if (q.type === '判断题') {
+      html += `<div class="q-option" data-q="${i}" onclick="selectJudge(${i}, '正确')">&#10004; 正确</div>`;
+      html += `<div class="q-option" data-q="${i}" onclick="selectJudge(${i}, '错误')">&#10008; 错误</div>`;
+    } else if (q.type === '填空题') {
+      html += `<input type="text" placeholder="请输入答案" id="fill-input-${i}">`;
+    } else if (q.type === '简答题') {
+      html += `<textarea placeholder="请输入答案" id="short-input-${i}"></textarea>`;
+    }
+    
+    html += `</div><div id="q-result-${i}"></div>`;
+    html += `<button class="ask-baigao-btn" onclick="askBaigaoAboutQuestion(${i})">🐱 问白糕</button>`;
+    html += `</div>`;
+  });
+
+  document.getElementById('examContent').innerHTML = html;
+  document.getElementById('examPreview').style.display = '';
+  document.getElementById('examPreview').scrollIntoView({ behavior: 'smooth' });
+}
+
+function selectOption(qIdx, optIdx) {
+  if (!isAnswering) return;
+  document.querySelectorAll(`[data-q="${qIdx}"]`).forEach(o => o.classList.remove('selected'));
+  document.querySelectorAll(`[data-q="${qIdx}"]`)[optIdx].classList.add('selected');
+  currentAnswers[qIdx] = optIdx;
+}
+
+function selectJudge(qIdx, value) {
+  if (!isAnswering) return;
+  document.querySelectorAll(`[data-q="${qIdx}"]`).forEach(o => o.classList.remove('selected'));
+  if (value === '正确') document.querySelectorAll(`[data-q="${qIdx}"]`)[0].classList.add('selected');
+  else document.querySelectorAll(`[data-q="${qIdx}"]`)[1].classList.add('selected');
+  currentAnswers[qIdx] = value;
+}
+
+function startAnswering() {
+  isAnswering = true;
+  document.getElementById('startAnswerBtn').style.display = 'none';
+  document.getElementById('submitBtn').style.display = '';
+  showToast('开始答题');
+}
+
+async function submitAnswers() {
+  if (!currentExam) return;
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'AI 正在判分...';
+  showToast('AI 正在批改...');
+
+  let correct = 0;
+  let total = currentExam.questions.length;
+
+  for (let i = 0; i < currentExam.questions.length; i++) {
+    const q = currentExam.questions[i];
+    const userAnswer = currentAnswers[i];
+    const resultDiv = document.getElementById(`q-result-${i}`);
+    let isCorrect = false;
+
+    if (q.type === '选择题') {
+      const correctLetter = q.answer ? q.answer.charAt(0).toUpperCase() : '';
+      const correctIdx = q.options ? q.options.findIndex(o => o.startsWith(correctLetter)) : -1;
+      isCorrect = (userAnswer === correctIdx);
+    } else if (q.type === '判断题') {
+      isCorrect = (userAnswer === q.answer);
+    } else if (q.type === '填空题') {
+      const input = document.getElementById(`fill-input-${i}`);
+      const userText = input ? input.value.trim() : '';
+      isCorrect = (userText === q.answer);
+    } else if (q.type === '简答题') {
+      isCorrect = true;
+    }
+
+    if (isCorrect) correct++;
+    resultDiv.innerHTML = isCorrect ? '<span style="color:#4caf50;">✓ 正确</span>' : `<span style="color:#f44336;">✗ 错误，正确答案：${q.answer || '见解析'}</span>`;
+  }
+
+  document.getElementById('scoreCard').style.display = '';
+  document.getElementById('scoreCard').innerHTML = `<h3>得分：${correct}/${total}（${Math.round(correct/total*100)}分）</h3>`;
+  btn.textContent = '提交答卷';
+  btn.disabled = false;
+}
+
+function saveExam() {
+  if (!currentExam) return;
+  let exams = JSON.parse(localStorage.getItem('saved_exams') || '[]');
+  exams.push(currentExam);
+  localStorage.setItem('saved_exams', JSON.stringify(exams));
+  showToast('试卷已保存');
+  updateStats();
+}
+
+// ========== Forum System ==========
+const SCHOOLS = [
+  { name: "全部", color: "#666" },
+  { name: "清华大学", color: "#8b0000" },
+  { name: "北京大学", color: "#8b0000" },
+  { name: "复旦大学", color: "#003399" },
+  { name: "浙江大学", color: "#003399" },
+  { name: "上海交大", color: "#8b0000" },
+  { name: "武汉大学", color: "#006400" },
+  { name: "其他", color: "#666" }
+];
+
+const ANON_ANIMALS = ["白猫","橘猫","黑猫","柴犬","柯基","仓鼠","兔子","熊猫","企鹅","水母","松鼠","鹦鹉","狐狸","考拉","海豚"];
+
+function getSchoolColor(name) {
+  const s = SCHOOLS.find(s => s.name === name);
+  return s ? s.color : "#666";
+}
+
+function getSchoolAbbr(name) {
+  if (name === "全部") return "全";
+  if (name === "其他") return "他";
+  return name.substring(0, 2);
+}
+
+function getMyAnonId() {
+  let id = localStorage.getItem('forum_my_anon_id');
+  if (!id) { refreshAnonId(); id = localStorage.getItem('forum_my_anon_id'); }
+  return id;
+}
+
+function refreshAnonId() {
+  const animal = ANON_ANIMALS[Math.floor(Math.random() * ANON_ANIMALS.length)];
+  const num = Math.floor(Math.random() * 9000) + 1000;
+  const id = `匿名${animal}#${num}`;
+  localStorage.setItem('forum_my_anon_id', id);
+  if (document.getElementById('forumMyAnonId')) {
+    document.getElementById('forumMyAnonId').textContent = id;
+  }
+  return id;
+}
+
+function getAnonColor(anonId) {
+  let hash = 0;
+  for (let i = 0; i < anonId.length; i++) hash = anonId.charCodeAt(i) + ((hash << 5) - hash);
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 50%, 50%)`;
+}
+
+function getAnonInitial(anonId) {
+  const match = anonId.match(/匿名(.+?)#/);
+  return match ? match[1].charAt(0) : "匿";
+}
+
+function getForumPosts() {
+  return JSON.parse(localStorage.getItem('forum_posts') || '[]');
+}
+
+function saveForumPosts(posts) {
+  localStorage.setItem('forum_posts', JSON.stringify(posts));
+}
+
+function getPrivateMessages() {
+  return JSON.parse(localStorage.getItem('forum_private_msgs') || '{}');
+}
+
+function savePrivateMessages(msgs) {
+  localStorage.setItem('forum_private_msgs', JSON.stringify(msgs));
+}
+
+// ========== Friend System ==========
+function getFriends() {
+  return JSON.parse(localStorage.getItem('forum_friends') || '[]');
+}
+
+function saveFriends(friends) {
+  localStorage.setItem('forum_friends', JSON.stringify(friends));
+}
+
+function getFriendRequests() {
+  return JSON.parse(localStorage.getItem('forum_friend_requests') || '[]');
+}
+
+function saveFriendRequests(requests) {
+  localStorage.setItem('forum_friend_requests', JSON.stringify(requests));
+}
+
+function isFriend(anonId) {
+  return getFriends().includes(anonId);
+}
+
+function sendFriendRequest(targetAnonId) {
+  const myId = getMyAnonId();
+  if (targetAnonId === myId) { showToast('不能加自己为好友哦'); return; }
+  if (isFriend(targetAnonId)) { showToast('已经是好友了'); return; }
+  
+  const requests = getFriendRequests();
+  const existing = requests.find(r => r.from === myId && r.to === targetAnonId && r.status === 'pending');
+  if (existing) { showToast('已发送过好友请求，等待对方同意'); return; }
+  
+  requests.push({ from: myId, to: targetAnonId, status: 'pending', timestamp: Date.now() });
+  saveFriendRequests(requests);
+  showToast('已向 ' + targetAnonId + ' 发送好友请求！');
+  
+  // 模拟对方自动同意
+  setTimeout(() => {
+    const reqs = getFriendRequests();
+    const req = reqs.find(r => r.from === myId && r.to === targetAnonId && r.status === 'pending');
+    if (req) {
+      req.status = 'accepted';
+      saveFriendRequests(reqs);
+      const friends = getFriends();
+      if (!friends.includes(targetAnonId)) {
+        friends.push(targetAnonId);
+        saveFriends(friends);
+      }
+      showToast(targetAnonId + ' 已同意你的好友请求！');
+      renderChatContacts();
+      if (forumCurrentPostId) viewPost(forumCurrentPostId);
+    }
+  }, 1500);
+}
+
+function acceptFriendRequest(fromAnonId) {
+  const requests = getFriendRequests();
+  const req = requests.find(r => r.from === fromAnonId && r.status === 'pending');
+  if (req) {
+    req.status = 'accepted';
+    saveFriendRequests(requests);
+    const friends = getFriends();
+    if (!friends.includes(fromAnonId)) {
+      friends.push(fromAnonId);
+      saveFriends(friends);
+    }
+    showToast('已添加 ' + fromAnonId + ' 为好友！');
+    renderChatContacts();
+  }
+}
+
+function rejectFriendRequest(fromAnonId) {
+  const requests = getFriendRequests();
+  const filtered = requests.filter(r => !(r.from === fromAnonId && r.status === 'pending'));
+  saveFriendRequests(filtered);
+  showToast('已拒绝 ' + fromAnonId + ' 的好友请求');
+  renderChatContacts();
+}
+
+function removeFriend(anonId) {
+  if (!confirm('确定要删除好友 ' + anonId + ' 吗？')) return;
+  const friends = getFriends().filter(f => f !== anonId);
+  saveFriends(friends);
+  const myId = getMyAnonId();
+  const chatKey = [myId, anonId].sort().join(':::');
+  const msgs = getPrivateMessages();
+  delete msgs[chatKey];
+  savePrivateMessages(msgs);
+  if (forumCurrentChatUser === anonId) {
+    forumCurrentChatUser = null;
+    document.getElementById('chatWindow').innerHTML = '<div class="chat-empty">选择一个联系人开始聊天</div>';
+  }
+  showToast('已删除好友 ' + anonId);
+  renderChatContacts();
+}
+
+function acceptFriendFromModal() {
+  if (pendingFriendRequestFrom) {
+    acceptFriendRequest(pendingFriendRequestFrom);
+    pendingFriendRequestFrom = null;
+  }
+  document.getElementById('friendRequestModal').style.display = 'none';
+}
+
+function rejectFriendFromModal() {
+  if (pendingFriendRequestFrom) {
+    rejectFriendRequest(pendingFriendRequestFrom);
+    pendingFriendRequestFrom = null;
+  }
+  document.getElementById('friendRequestModal').style.display = 'none';
+}
+
+// ========== Forum Rendering ==========
+function initForum() {
+  document.getElementById('forumMyAnonId').textContent = getMyAnonId();
+  renderSchoolBar();
+  renderForumPosts();
+  ensureSamplePosts();
+  renderChatContacts();
+}
+
+function ensureSamplePosts() {
+  const posts = getForumPosts();
+  if (posts.length > 0) return;
+  const samples = [
+    { school: "清华大学", anonId: "匿名橘猫#3847", title: "期末高数怎么复习啊救命", content: "下周就考试了，积分完全不会做，有没有大佬分享一下复习方法😭", likes: 12 },
+    { school: "北京大学", anonId: "匿名柴犬#7291", title: "图书馆占座太卷了", content: "早上6点去图书馆已经没位了，大家都是几点去的啊？", likes: 28 },
+    { school: "复旦大学", anonId: "匿名熊猫#1563", title: "推荐一个超好用的笔记方法", content: "康奈尔笔记法真的好用！左边写关键词，右边写详细内容，底部写总结。", likes: 45 }
+  ];
+  const now = Date.now();
+  samples.forEach((s, i) => {
+    posts.push({
+      id: now + i,
+      school: s.school,
+      anonId: s.anonId,
+      title: s.title,
+      content: s.content,
+      timestamp: now - (samples.length - i) * 3600000,
+      replies: [],
+      likes: s.likes
+    });
+  });
+  saveForumPosts(posts);
+}
+
+function renderSchoolBar() {
+  const bar = document.getElementById('schoolBar');
+  bar.innerHTML = SCHOOLS.map(s => {
+    const abbr = getSchoolAbbr(s.name);
+    const isActive = forumCurrentSchool === s.name ? 'active' : '';
+    return `<div class="school-badge ${isActive}" onclick="selectSchool('${s.name}')">
+      <div class="school-icon" style="background:${s.color}">${abbr}</div>
+      <span>${s.name}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectSchool(name) {
+  forumCurrentSchool = name;
+  renderSchoolBar();
+  renderForumPosts();
+  backToPostList();
+}
+
+function renderForumPosts() {
+  let posts = getForumPosts();
+  if (forumCurrentSchool !== "全部") {
+    posts = posts.filter(p => p.school === forumCurrentSchool);
+  }
+  posts.sort((a, b) => b.timestamp - a.timestamp);
+
+  const list = document.getElementById('forumPostList');
+  if (posts.length === 0) {
+    list.innerHTML = '<div style="padding:40px;text-align:center;color:#999;">这个频道还没有帖子，来发第一帖吧！</div>';
+    return;
+  }
+
+  list.innerHTML = posts.map(p => {
+    const color = getAnonColor(p.anonId);
+    const initial = getAnonInitial(p.anonId);
+    const time = formatForumTime(p.timestamp);
+    return `<div class="forum-post-card" onclick="viewPost(${p.id})">
+      <div class="post-card-header">
+        <div class="post-card-avatar" style="background:${color}">${initial}</div>
+        <div>
+          <div class="anon-name">${escapeHtml(p.anonId)}</div>
+          <div class="post-time">${time}</div>
+        </div>
+        <div class="post-card-school" style="background:${getSchoolColor(p.school)}15;color:${getSchoolColor(p.school)}">${p.school}</div>
+      </div>
+      <div class="post-card-title">${escapeHtml(p.title)}</div>
+      <div class="post-card-preview">${escapeHtml(p.content)}</div>
+      <div class="post-card-footer">
+        <span>❤ ${p.likes || 0}</span>
+        <span>💬 ${(p.replies || []).length}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function formatForumTime(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return "刚刚";
+  if (diff < 3600000) return Math.floor(diff / 60000) + "分钟前";
+  if (diff < 86400000) return Math.floor(diff / 3600000) + "小时前";
+  if (diff < 604800000) return Math.floor(diff / 86400000) + "天前";
+  return new Date(ts).toLocaleDateString();
+}
+
+function viewPost(postId) {
+  const posts = getForumPosts();
+  const post = posts.find(p => p.id === postId);
+  if (!post) return;
+  forumCurrentPostId = postId;
+
+  document.getElementById('forumPostListWrap').classList.add('hidden');
+  document.getElementById('forumPostDetail').classList.add('active');
+
+  const color = getAnonColor(post.anonId);
+  const initial = getAnonInitial(post.anonId);
+  const time = formatForumTime(post.timestamp);
+  const likedPosts = JSON.parse(localStorage.getItem('forum_liked_posts') || '[]');
+  const isLiked = likedPosts.includes(postId);
+  const friendBtn = isFriend(post.anonId) 
+    ? `<div class="action-btn" onclick="openPrivateChat('${escapeHtml(post.anonId)}')">💬 私聊TA</div>`
+    : `<div class="action-btn" onclick="sendFriendRequest('${escapeHtml(post.anonId)}')">➕ 加好友</div>`;
+
+  let html = `
+    <div class="post-card-header" style="margin-bottom:12px;">
+      <div class="post-card-avatar" style="background:${color};width:40px;height:40px;font-size:16px;">${initial}</div>
+      <div>
+        <div class="anon-name" style="font-size:14px;">${escapeHtml(post.anonId)}</div>
+        <div class="post-time">${time}</div>
+      </div>
+      <div class="post-card-school" style="background:${getSchoolColor(post.school)}15;color:${getSchoolColor(post.school)}">${post.school}</div>
+    </div>
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">${escapeHtml(post.title)}</h3>
+    <div class="post-detail-content">${escapeHtml(post.content)}</div>
+    <div class="post-detail-actions">
+      <div class="action-btn ${isLiked ? 'liked' : ''}" onclick="togglePostLike(${postId})">❤ ${isLiked ? '已赞' : '点赞'} ${post.likes || 0}</div>
+      ${friendBtn}
+    </div>
+    <div class="reply-section">
+      <h4>评论 (${(post.replies || []).length})</h4>
+      ${(post.replies || []).map(r => {
+        const rc = getAnonColor(r.anonId);
+        const ri = getAnonInitial(r.anonId);
+        return `<div class="reply-item">
+          <div class="reply-avatar" style="background:${rc}">${ri}</div>
+          <div class="reply-content">
+            <div class="reply-name">${escapeHtml(r.anonId)}<span class="reply-time">${formatForumTime(r.timestamp)}</span></div>
+            <div class="reply-text">${escapeHtml(r.content)}</div>
+            <div style="margin-top:4px;">
+              <button onclick="event.stopPropagation();${isFriend(r.anonId) ? "openPrivateChat('" + escapeHtml(r.anonId) + "')" : "sendFriendRequest('" + escapeHtml(r.anonId) + "')"}" style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #ddd;background:#f8f8f8;cursor:pointer;">${isFriend(r.anonId) ? '💬 私聊' : '➕ 加好友'}</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+      <div class="reply-input-area">
+        <input type="text" id="replyInput" placeholder="写下你的评论..." onkeydown="if(event.key==='Enter')submitReply(${postId})">
+        <button class="btn btn-primary" onclick="submitReply(${postId})">发送</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('postDetailContent').innerHTML = html;
+}
+
+function backToPostList() {
+  forumCurrentPostId = null;
+  document.getElementById('forumPostDetail').classList.remove('active');
+  document.getElementById('forumPostListWrap').classList.remove('hidden');
+}
+
+function togglePostLike(postId) {
+  const posts = getForumPosts();
+  const post = posts.find(p => p.id === postId);
+  if (!post) return;
+  let liked = JSON.parse(localStorage.getItem('forum_liked_posts') || '[]');
+  if (liked.includes(postId)) {
+    liked = liked.filter(id => id !== postId);
+    post.likes = Math.max(0, (post.likes || 1) - 1);
+  } else {
+    liked.push(postId);
+    post.likes = (post.likes || 0) + 1;
+  }
+  localStorage.setItem('forum_liked_posts', JSON.stringify(liked));
+  saveForumPosts(posts);
+  viewPost(postId);
+}
+
+function submitReply(postId) {
+  const input = document.getElementById('replyInput');
+  const content = input.value.trim();
+  if (!content) return;
+  
+  const posts = getForumPosts();
+  const post = posts.find(p => p.id === postId);
+  if (!post) return;
+  if (!post.replies) post.replies = [];
+  post.replies.push({ anonId: getMyAnonId(), content, timestamp: Date.now() });
+  saveForumPosts(posts);
+  viewPost(postId);
+}
+
+function switchForumTab(tab) {
+  document.querySelectorAll('.forum-tab').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  
+  if (tab === 'public') {
+    document.getElementById('forumPublic').style.display = '';
+    document.getElementById('forumPrivateChat').classList.remove('active');
+  } else {
+    document.getElementById('forumPublic').style.display = 'none';
+    document.getElementById('forumPrivateChat').classList.add('active');
+    renderChatContacts();
+  }
+}
+
+function renderChatContacts() {
+  const msgs = getPrivateMessages();
+  const myId = getMyAnonId();
+  const friends = getFriends();
+  const friendRequests = getFriendRequests();
+  const pendingRequests = friendRequests.filter(r => r.to === myId && r.status === 'pending');
+
+  const list = document.getElementById('chatContactList');
+  let html = '';
+  
+  if (pendingRequests.length > 0) {
+    html += '<div class="friend-requests-bar"><h4>🔔 好友请求 (' + pendingRequests.length + ')</h4>';
+    pendingRequests.forEach(req => {
+      const color = getAnonColor(req.from);
+      const initial = getAnonInitial(req.from);
+      html += `<div class="friend-request-item">
+        <div class="friend-req-avatar" style="background:${color}">${initial}</div>
+        <div class="friend-req-info">
+          <div class="friend-req-name">${escapeHtml(req.from)}</div>
+          <div class="friend-req-time">${formatForumTime(req.timestamp)}</div>
+        </div>
+        <div class="friend-req-actions">
+          <button class="friend-req-btn accept" onclick="acceptFriendRequest('${escapeHtml(req.from)}')">接受</button>
+          <button class="friend-req-btn reject" onclick="rejectFriendRequest('${escapeHtml(req.from)}')">拒绝</button>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  
+  if (friends.length === 0) {
+    html += '<div style="padding:30px 10px;text-align:center;color:#999;">还没有好友<br>在帖子下点击「➕ 加好友」开始</div>';
+  } else {
+    html += '<div class="friend-list-header">我的好友 (' + friends.length + ')</div>';
+    html += friends.map(c => {
+      const color = getAnonColor(c);
+      const initial = getAnonInitial(c);
+      const chatKey = [myId, c].sort().join(':::');
+      const chatMsgs = msgs[chatKey] || [];
+      const lastMsg = chatMsgs.length > 0 ? chatMsgs[chatMsgs.length - 1].content : '暂无消息';
+      const isActive = forumCurrentChatUser === c ? 'active' : '';
+      return `<div class="chat-contact-item ${isActive}" onclick="openChatWith('${escapeHtml(c)}')">
+        <div class="chat-contact-avatar" style="background:${color}">${initial}</div>
+        <div class="chat-contact-info">
+          <div class="chat-contact-name">${escapeHtml(c)}</div>
+          <div class="chat-contact-last">${escapeHtml(lastMsg.substring(0, 20))}</div>
+        </div>
+        <button class="remove-friend-btn" onclick="event.stopPropagation();removeFriend('${escapeHtml(c)}')" title="删除好友">×</button>
+      </div>`;
+    }).join('');
+  }
+  
+  list.innerHTML = html;
+}
+
+function openPrivateChat(anonId) {
+  const myId = getMyAnonId();
+  if (anonId === myId) { showToast('不能私聊自己哦'); return; }
+  if (!isFriend(anonId)) { showToast('请先添加对方为好友才能私聊'); sendFriendRequest(anonId); return; }
+  switchForumTab('private');
+  document.querySelectorAll('.forum-tab')[1].classList.add('active');
+  document.querySelectorAll('.forum-tab')[0].classList.remove('active');
+  document.getElementById('forumPublic').style.display = 'none';
+  document.getElementById('forumPrivateChat').classList.add('active');
+  openChatWith(anonId);
+}
+
+function openChatWith(anonId) {
+  forumCurrentChatUser = anonId;
+  renderChatContacts();
+  const myId = getMyAnonId();
+  const chatKey = [myId, anonId].sort().join(':::');
+  const msgs = getPrivateMessages();
+  const chatMsgs = msgs[chatKey] || [];
+  const color = getAnonColor(anonId);
+  const initial = getAnonInitial(anonId);
+
+  document.getElementById('chatWindow').innerHTML = `
+    <div class="chat-window-header">${escapeHtml(anonId)}</div>
+    <div class="chat-window-body" id="chatBody">
+      ${chatMsgs.length === 0 ? '<div style="color:#bbb;text-align:center;padding:20px;">开始对话吧</div>' :
+        chatMsgs.map(m => `<div class="chat-bubble ${m.from === myId ? 'mine' : 'other'}">${escapeHtml(m.content)}</div>`).join('')
+      }
+    </div>
+    <div class="chat-window-input">
+      <input type="text" id="chatInput" placeholder="发消息..." onkeydown="if(event.key==='Enter')sendPrivateMsg()">
+      <button class="btn btn-primary" onclick="sendPrivateMsg()">发送</button>
+    </div>
+  `;
+  const body = document.getElementById('chatBody');
+  if (body) body.scrollTop = body.scrollHeight;
+}
+
+function sendPrivateMsg() {
+  const input = document.getElementById('chatInput');
+  const content = input.value.trim();
+  if (!content || !forumCurrentChatUser) return;
+  const myId = getMyAnonId();
+  const chatKey = [myId, forumCurrentChatUser].sort().join(':::');
+  const msgs = getPrivateMessages();
+  if (!msgs[chatKey]) msgs[chatKey] = [];
+  msgs[chatKey].push({ from: myId, content, timestamp: Date.now() });
+  savePrivateMessages(msgs);
+  input.value = '';
+  openChatWith(forumCurrentChatUser);
+}
+
+// ========== Audio Recorder ==========
+let isRecording = false;
+let liveRecognition = null;
+let liveTranscript = '';
+let recTimerInterval = null;
+let recStartTime = null;
+let liveNotesTimer = null;
+
+function switchRecMode(mode) {
+  document.getElementById('recLivePanel').style.display = mode === 'live' ? '' : 'none';
+  document.getElementById('recUploadPanel').style.display = mode === 'upload' ? '' : 'none';
+  document.getElementById('recModeBtn').className = mode === 'live' ? 'btn btn-primary' : 'btn';
+  document.getElementById('uploadModeBtn').className = mode === 'upload' ? 'btn btn-primary' : 'btn';
+}
+
+function toggleLiveRecord() {
+  if (isRecording) { stopLiveRecord(); } else { startLiveRecord(); }
+}
+
+function startLiveRecord() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('浏览器不支持语音识别，请使用 Chrome');
+    return;
+  }
+  
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  liveRecognition = new SpeechRecognition();
+  liveRecognition.continuous = true;
+  liveRecognition.interimResults = true;
+  liveRecognition.lang = 'zh-CN';
+  liveTranscript = '';
+  
+  document.getElementById('liveTranscript').textContent = '';
+  document.getElementById('liveNotes').textContent = '录音中，AI 正在整理笔记...';
+  document.getElementById('recStartBtn').style.background = '#c0392b';
+  document.getElementById('recStartBtn').textContent = '⏹';
+  isRecording = true;
+  
+  // 计时器
+  recStartTime = Date.now();
+  document.getElementById('recTimer').textContent = '00:00';
+  recTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - recStartTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('recTimer').textContent = m + ':' + s;
+  }, 1000);
+  
+  let lastFinalIndex = 0;
+  
+  liveRecognition.onresult = (event) => {
+    let interim = '';
+    for (let i = lastFinalIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        liveTranscript += event.results[i][0].transcript + ' ';
+        lastFinalIndex = i + 1;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    // 显示实时转写
+    document.getElementById('liveTranscript').innerHTML = 
+      escapeHtml(liveTranscript) + '<span style="color:#bbb;">' + escapeHtml(interim) + '</span>';
+    document.getElementById('liveTranscript').scrollTop = document.getElementById('liveTranscript').scrollHeight;
+    
+    // 每15秒自动整理一次笔记
+    if (!liveNotesTimer) {
+      liveNotesTimer = setTimeout(() => {
+        generateLiveNotes(liveTranscript);
+        liveNotesTimer = null;
+      }, 15000);
+    }
+  };
+  
+  liveRecognition.onend = () => {
+    if (isRecording) {
+      // 自动重启（Chrome会间歇停止）
+      try { liveRecognition.start(); } catch(e) {}
+    }
+  };
+  
+  liveRecognition.onerror = (e) => {
+    if (e.error !== 'aborted' && e.error !== 'no-speech') {
+      console.log('Speech recognition error:', e.error);
+    }
+  };
+  
+  liveRecognition.start();
+}
+
+function stopLiveRecord() {
+  isRecording = false;
+  if (liveRecognition) { try { liveRecognition.stop(); } catch(e) {} }
+  clearInterval(recTimerInterval);
+  clearTimeout(liveNotesTimer);
+  
+  document.getElementById('recStartBtn').style.background = '#000000';
+  document.getElementById('recStartBtn').textContent = '🎤';
+  
+  // 最后整理一次笔记
+  if (liveTranscript.trim()) {
+    generateLiveNotes(liveTranscript);
+  }
+}
+
+async function generateLiveNotes(text) {
+  if (!text.trim()) return;
+  document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">AI 正在整理笔记...</span>';
+  const result = await callDeepSeek([
+    { role: 'user', content: `你是一个学习笔记整理助手。根据以下实时录音转写的文字内容，整理出一份清晰的笔记。要求：\n1. 提取关键要点\n2. 按主题分段\n3. 用编号和缩进展示层级\n4. 标注重要概念\n\n转写内容：\n${text}` }
+  ]);
+  if (result) {
+    document.getElementById('liveNotes').innerHTML = formatAiReply(result);
+  }
+}
+
+// === 上传文件模式 ===
+function handleAudioFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  document.getElementById('audioPlayer').src = url;
+  document.getElementById('uploadPlayerCard').style.display = '';
+  document.getElementById('uploadResult').innerHTML = '';
+}
+
+async function processUploadedAudio() {
+  const player = document.getElementById('audioPlayer');
+  if (!player.src) { showToast('请先选择音频文件'); return; }
+  
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('浏览器不支持语音识别，请使用 Chrome');
+    return;
+  }
+  
+  document.getElementById('audioProgress').style.display = '';
+  document.getElementById('audioProgressText').textContent = '正在识别音频内容...';
+  document.getElementById('audioProgressFill').style.width = '30%';
+  
+  player.currentTime = 0;
+  player.play();
+  
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.lang = 'zh-CN';
+  let transcript = '';
+  
+  rec.onresult = (event) => {
+    for (let i = 0; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        transcript += event.results[i][0].transcript + ' ';
+      }
+    }
+    document.getElementById('audioProgressFill').style.width = '60%';
+  };
+  
+  rec.onend = async () => {
+    document.getElementById('audioProgressFill').style.width = '80%';
+    player.pause();
+    
+    if (!transcript.trim()) {
+      document.getElementById('audioProgress').style.display = 'none';
+      showToast('未识别到语音内容，请检查音频是否清晰');
+      return;
+    }
+    
+    document.getElementById('audioProgressText').textContent = '识别完成，正在生成思维导图和笔记...';
+    
+    // 同时生成思维导图和笔记
+    const [mindmap, notes] = await Promise.all([
+      callDeepSeek([{ role: 'user', content: `根据以下内容生成思维导图的 Markdown 格式（使用缩进和层级结构），要求结构清晰、重点突出、层次分明：\n\n${transcript}` }]),
+      callDeepSeek([{ role: 'user', content: `根据以下内容生成一份简洁清晰的笔记摘要。要求：\n1. 提取核心要点\n2. 按主题分段\n3. 用编号列表展示\n4. 标注关键概念\n\n内容：\n${transcript}` }])
+    ]);
+    
+    document.getElementById('audioProgressFill').style.width = '100%';
+    document.getElementById('audioProgress').style.display = 'none';
+    
+    let html = '';
+    if (mindmap) {
+      html += `<div class="card"><h3>🧠 思维导图</h3><pre style="white-space:pre-wrap;font-size:14px;line-height:1.8;margin-top:12px;">${escapeHtml(mindmap)}</pre></div>`;
+    }
+    if (notes) {
+      html += `<div class="card"><h3>📝 笔记摘要</h3><div style="margin-top:12px;line-height:1.8;">${formatAiReply(notes)}</div></div>`;
+    }
+    document.getElementById('uploadResult').innerHTML = html;
+  };
+  
+  rec.onerror = () => {
+    document.getElementById('audioProgress').style.display = 'none';
+    player.pause();
+    showToast('语音识别出错，请重试');
+  };
+  
+  rec.start();
+}
+
+// ========== AI Chat (白糕) ==========
+function toggleAiChat() {
+  const win = document.getElementById('aiChatWindow');
+  const cat = document.getElementById('aiCatButton');
+  win.classList.toggle('active');
+  cat.classList.toggle('active');
+}
+
+function clearAiChat() {
+  document.getElementById('aiChatBody').innerHTML = '<div class="ai-msg assistant">嗨～我是白糕 🐱 不管是学习上的问题还是想随便聊聊，都可以找我呀！</div>';
+  aiChatHistory = [];
+  currentViewingQuestion = null;
+  updateChatContextBar();
+}
+
+function askBaigaoAboutQuestion(qIndex) {
+  if (!currentExam || !currentExam.questions[qIndex]) { showToast('找不到题目信息'); return; }
+  
+  const q = currentExam.questions[qIndex];
+  currentViewingQuestion = { index: qIndex, question: q };
+  
+  const win = document.getElementById('aiChatWindow');
+  const cat = document.getElementById('aiCatButton');
+  win.classList.add('active');
+  cat.classList.add('active');
+  
+  updateChatContextBar();
+  
+  let questionText = `第${qIndex + 1}题 [${q.type}]：${q.content}`;
+  if (q.type === '选择题' && q.options) questionText += '\n选项：' + q.options.join(' / ');
+  if (q.answer) questionText += '\n正确答案：' + q.answer;
+  
+  const autoMsg = '白糕，请帮我详细讲解一下这道题，用最通俗的方式解释给我听：\n' + questionText;
+  
+  const input = document.getElementById('aiChatInput');
+  input.value = autoMsg;
+  sendAiMessage();
+}
+
+function updateChatContextBar() {
+  let existingBar = document.getElementById('chatContextBar');
+  if (existingBar) existingBar.remove();
+  
+  if (currentViewingQuestion) {
+    const q = currentViewingQuestion.question;
+    const shortContent = q.content.length > 30 ? q.content.substring(0, 30) + '...' : q.content;
+    const bar = document.createElement('div');
+    bar.id = 'chatContextBar';
+    bar.className = 'chat-context-bar';
+    bar.innerHTML = `📖 当前题目：第${currentViewingQuestion.index + 1}题 - ${shortContent} <span class="ctx-close" onclick="clearQuestionContext()">✕</span>`;
+    const body = document.getElementById('aiChatBody');
+    body.parentNode.insertBefore(bar, body.nextSibling);
+  }
+}
+
+function clearQuestionContext() {
+  currentViewingQuestion = null;
+  updateChatContextBar();
+}
+
+async function sendAiMessage() {
+  const input = document.getElementById('aiChatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const body = document.getElementById('aiChatBody');
+  body.innerHTML += '<div class="ai-msg user">' + escapeHtml(msg) + '</div>';
+  body.scrollTop = body.scrollHeight;
+
+  aiChatHistory.push({ role: 'user', content: msg });
+
+  const typingId = 'typing-' + Date.now();
+  body.innerHTML += '<div class="ai-msg assistant thinking" id="' + typingId + '">思考中...</div>';
+  body.scrollTop = body.scrollHeight;
+
+  const sendBtn = document.getElementById('aiSendBtn');
+  sendBtn.disabled = true;
+
+  try {
+    let enrichedMsg = msg;
+    if (currentViewingQuestion && currentViewingQuestion.question) {
+      const q = currentViewingQuestion.question;
+      let qCtx = `\n\n【当前屏幕上的题目】\n第${currentViewingQuestion.index + 1}题 [${q.type}]：${q.content}`;
+      if (q.type === '选择题' && q.options) qCtx += '\n选项：' + q.options.join(' / ');
+      if (q.answer) qCtx += '\n正确答案：' + q.answer;
+      qCtx += '\n【请结合这道题来回答用户的问题】';
+      enrichedMsg = msg + qCtx;
+    }
+
+    const BAIGAO_SYSTEM = `你是「白糕」，白糕平台的AI猫咪助手。你是一只聪明、可爱、偶尔有点调皮的白猫。你有两种模式：
+1. 闲聊模式：用户可以跟你聊天、吐槽、倾诉、讲笑话，你可以用轻松可爱的语气回应，偶尔用猫咪的方式表达（比如"喵～这道题确实有点难呢"），但不要每句话都加喵，自然一点。
+2. 讲题模式：用户问你学科问题、作业、考试、知识点时，你要切换成专业的学习助手，清晰准确地解答，可以分步骤讲解，用通俗易懂的语言。
+规则：
+- 用户没明确问学科问题时，默认用闲聊风格
+- 回答要简洁，不要太长，像朋友聊天一样
+- 可以适当用emoji但别太多
+- 你叫白糕，是一只白色的猫
+- 用中文回答`;
+
+    // Build messages: system + recent history (last 10) + current
+    const apiMessages = [{ role: 'system', content: BAIGAO_SYSTEM }];
+    const recentHistory = aiChatHistory.slice(0, -1).slice(-10);
+    recentHistory.forEach(h => apiMessages.push(h));
+    apiMessages.push({ role: 'user', content: enrichedMsg });
+
+    const reply = await callDeepSeek(apiMessages);
+    const typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
+
+    if (!reply) {
+      body.innerHTML += '<div class="ai-msg assistant" style="color:#c00;">抱歉，AI 暂时无法响应，请稍后重试。</div>';
+    } else {
+      aiChatHistory.push({ role: 'assistant', content: reply });
+      body.innerHTML += '<div class="ai-msg assistant">' + formatAiReply(reply) + '</div>';
+    }
+  } catch(e) {
+    const typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
+    body.innerHTML += '<div class="ai-msg assistant" style="color:#c00;">出错了：' + escapeHtml(e.message) + '</div>';
+  }
+
+  sendBtn.disabled = false;
+  body.scrollTop = body.scrollHeight;
+}
+
+function formatAiReply(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+// ========== Utility ==========
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showToast(msg) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function openCreatePostModal() {
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('modalContent').innerHTML = `
+    <h3>发布新帖</h3>
+    <div style="margin-bottom:12px;">
+      <label>学校：</label>
+      <select id="newPostSchool">
+        ${SCHOOLS.filter(s => s.name !== '全部').map(s => `<option>${s.name}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-bottom:12px;">
+      <input type="text" id="newPostTitle" placeholder="标题">
+    </div>
+    <div style="margin-bottom:12px;">
+      <textarea id="newPostContent" rows="5" placeholder="内容..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitNewPost()">发布</button>
+    </div>
+  `;
+}
+
+function submitNewPost() {
+  const school = document.getElementById('newPostSchool').value;
+  const title = document.getElementById('newPostTitle').value.trim();
+  const content = document.getElementById('newPostContent').value.trim();
+  if (!title || !content) { showToast('请填写标题和内容'); return; }
+  
+  const posts = getForumPosts();
+  posts.push({
+    id: Date.now(),
+    school,
+    anonId: getMyAnonId(),
+    title,
+    content,
+    timestamp: Date.now(),
+    replies: [],
+    likes: 0
+  });
+  saveForumPosts(posts);
+  closeModal();
+  renderForumPosts();
+  showToast('发布成功');
+}
+
+function closeModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function updateStats() {
+  const exams = JSON.parse(localStorage.getItem('saved_exams') || '[]');
+  const posts = getForumPosts();
+  document.getElementById('statExams').textContent = exams.length;
+  document.getElementById('statPosts').textContent = posts.length;
+}
+
+function exportData() {
+  const data = {
+    exams: JSON.parse(localStorage.getItem('saved_exams') || '[]'),
+    posts: getForumPosts(),
+    msgs: getPrivateMessages(),
+    friends: getFriends()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '白糕平台数据_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.exams) localStorage.setItem('saved_exams', JSON.stringify(data.exams));
+      if (data.posts) saveForumPosts(data.posts);
+      if (data.msgs) savePrivateMessages(data.msgs);
+      if (data.friends) saveFriends(data.friends);
+      showToast('导入成功');
+      updateStats();
+    } catch(err) {
+      showToast('导入失败，文件格式错误');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ========== Init ==========
+document.getElementById('settingBackendUrl').value = getBackendUrl();
+document.getElementById('settingApiKey').value = getApiKey();
+updateStats();
+
+// AI Chat window CSS
+const style = document.createElement('style');
+style.textContent = `
+  #aiCatButton { position: fixed; bottom: 30px; right: 100px; width: 56px; height: 56px; border-radius: 50%; background: #FFFFFF; border: 2px solid #333333; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden; transition: transform 0.2s; }
+  #aiCatButton:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(92,64,51,0.25); }
+  .ai-chat-window { display: none; position: fixed; bottom: 100px; right: 30px; width: 380px; max-height: 520px; background: #fff; border: 1px solid #CCCCCC; border-radius: 16px; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,0.12); z-index: 1000; resize: both; overflow: hidden; min-width: 280px; min-height: 300px; }
+  .ai-chat-window.active { display: flex; }
+  .ai-chat-header { padding: 10px 16px; border-bottom: 1px solid #CCCCCC; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; gap: 8px; background: #FFFFFF; }
+  .ai-chat-title { font-weight: 700; font-size: 15px; color: #000000; }
+  .ai-chat-header button { background: none; border: none; cursor: pointer; font-size: 18px; color: #8B7355; font-weight: 700; }
+  .ai-chat-body { flex: 1; padding: 16px; overflow-y: auto; min-height: 200px; background: #fff; }
+  .ai-msg { padding: 10px 14px; border-radius: 12px; margin: 6px 0; max-width: 85%; font-size: 14px; line-height: 1.6; }
+  .ai-msg.user { background: #000000; color: #fff; margin-left: auto; }
+  .ai-msg.assistant { background: #FFFFFF; border: 1px solid #CCCCCC; color: #000000; }
+  .ai-msg.thinking { color: #999; font-style: italic; }
+  .ai-chat-input-area { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #CCCCCC; background: #FFFFFF; }
+  .ai-chat-input-area input { flex: 1; padding: 10px 14px; border: 1px solid #CCCCCC; border-radius: 20px; }
+  .ai-chat-input-area button { padding: 10px 20px; border-radius: 20px; background: #000000; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+`;
+document.head.appendChild(style);
+
+// ========== Chat Window Drag ==========
+(function() {
+  const win = document.getElementById('aiChatWindow');
+  const header = win.querySelector('.ai-chat-header');
+  let isDragging = false, startX, startY, startLeft, startTop;
+  
+  header.addEventListener('mousedown', function(e) {
+    if (e.target.tagName === 'BUTTON') return;
+    isDragging = true;
+    const rect = win.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+    win.style.right = 'auto';
+    win.style.bottom = 'auto';
+    win.style.left = startLeft + 'px';
+    win.style.top = startTop + 'px';
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    win.style.left = (startLeft + dx) + 'px';
+    win.style.top = (startTop + dy) + 'px';
+  });
+  
+  document.addEventListener('mouseup', function() {
+    isDragging = false;
+  });
+})();
+
+</script>
+</body>
+</html>

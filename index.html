@@ -6,65 +6,67 @@
   <title>白糕平台</title>
   <style>
     :root {
-      --bg: #f5f5f5;
-      --text: #111111;
-      --text-sec: #555;
-      --border: #d0d0d0;
-      --hover: #e8e8e8;
-      --accent: #000000;
-      --card-bg: #ffffff;
+      --bg: #FAF6F0;
+      --text: #4A3728;
+      --text-sec: #8B7355;
+      --border: #E8DDD0;
+      --hover: #F0E8DC;
+      --accent: #9C7A56;
+      --topbar-h: 56px;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
-    .app-container { display: flex; height: 100vh; }
-    .sidebar { width: 220px; background: #111; color: #fff; padding: 20px 0; transition: width 0.3s; overflow: hidden; flex-shrink: 0; }
-    .sidebar.collapsed { width: 60px; }
-    .sidebar-header { padding: 0 16px 20px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; }
-    .sidebar-logo { font-size: 18px; font-weight: 700; white-space: nowrap; color: #fff; }
-    .sidebar-toggle { background: none; border: none; cursor: pointer; font-size: 18px; color: #999; }
-    .nav-item { padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; white-space: nowrap; color: #ccc; transition: all 0.2s; }
-    .nav-item:hover { background: #222; color: #fff; }
-    .nav-item.active { background: #fff; color: #000; font-weight: 600; }
-    .nav-icon { width: 24px; text-align: center; }
+    
+    /* === Top Bar === */
+    .top-bar { position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-h); background: #5C4033; color: #FFF5E6; display: flex; align-items: center; padding: 0 24px; z-index: 900; }
+    .top-bar-logo { font-size: 18px; font-weight: 800; margin-right: 40px; color: #FFF5E6; }
+    .top-bar-nav { display: flex; gap: 4px; }
+    .top-bar-nav .nav-item { padding: 8px 18px; cursor: pointer; border-radius: 8px; color: #D4BFA8; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+    .top-bar-nav .nav-item:hover { color: #FFF5E6; background: rgba(255,255,255,0.1); }
+    .top-bar-nav .nav-item.active { color: #FFF5E6; background: rgba(255,255,255,0.15); }
+    .top-bar-nav .nav-icon { margin-right: 6px; }
+    
+    .app-container { display: flex; margin-top: var(--topbar-h); height: calc(100vh - var(--topbar-h)); }
+    .sidebar { display: none; }
     .main-content { flex: 1; overflow-y: auto; padding: 30px; background: var(--bg); }
     .page { display: none; }
     .page.active { display: block; }
-    .page-title { font-size: 26px; font-weight: 800; margin-bottom: 24px; color: #000; }
-    .btn { padding: 8px 18px; border-radius: 8px; border: 2px solid var(--border); background: #fff; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
-    .btn:hover { background: #000; color: #fff; border-color: #000; }
-    .btn-primary { background: #000; color: #fff; border: 2px solid #000; font-weight: 600; }
-    .btn-primary:hover { background: #333; border-color: #333; }
-    input[type="text"], input[type="password"], textarea, select { padding: 10px 14px; border: 2px solid var(--border); border-radius: 8px; font-size: 14px; width: 100%; background: #fff; }
-    input:focus, textarea:focus, select:focus { outline: none; border-color: #000; box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }
-    .card { background: #fff; border: 2px solid #000; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .toast { position: fixed; top: 20px; right: 20px; background: #000; color: #fff; padding: 12px 24px; border-radius: 8px; z-index: 10000; animation: slideIn 0.3s; font-weight: 500; }
+    .page-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; color: #4A3728; }
+    .btn { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+    .btn:hover { background: var(--hover); }
+    .btn-primary { background: #7A5C42; color: #fff; border-color: #7A5C42; }
+    .btn-primary:hover { background: #5C4033; }
+    input[type="text"], input[type="password"], textarea, select { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; width: 100%; background: #fff; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #9C7A56; }
+    .card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 16px; }
+    .toast { position: fixed; top: 70px; right: 20px; background: #5C4033; color: #FFF5E6; padding: 12px 24px; border-radius: 8px; z-index: 10000; animation: slideIn 0.3s; }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     
     /* === Exam Center === */
-    .exam-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-    .exam-tab { padding: 8px 18px; cursor: pointer; border-radius: 8px 8px 0 0; font-weight: 500; }
-    .exam-tab.active { background: #000; color: #fff; }
+    .exam-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .exam-tab { padding: 8px 18px; cursor: pointer; border-radius: 8px 8px 0 0; font-weight: 500; color: var(--text-sec); }
+    .exam-tab.active { background: #7A5C42; color: #fff; }
     .exam-panel { display: none; }
     .exam-panel.active { display: block; }
-    .upload-zone { border: 2px dashed #000; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; background: #fff; }
-    .upload-zone:hover { background: #000; color: #fff; }
-    .question-item { padding: 16px; border: 2px solid #000; border-radius: 10px; margin-bottom: 12px; background: #fff; }
+    .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; background: #fff; }
+    .upload-zone:hover { border-color: #9C7A56; background: #FFF8F0; }
+    .question-item { padding: 16px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; background: #fff; }
     .q-number { font-weight: 700; margin-bottom: 8px; font-size: 15px; }
-    .q-option { padding: 10px 14px; margin: 4px 0; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
-    .q-option:hover { border-color: #000; background: #f5f5f5; }
-    .q-option.selected { background: #000; color: #fff; border-color: #000; }
-    .q-option.correct { background: #2e7d32; color: #fff; border-color: #2e7d32; }
-    .q-option.wrong { background: #c62828; color: #fff; border-color: #c62828; }
+    .q-option { padding: 10px 14px; margin: 4px 0; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+    .q-option:hover { border-color: #9C7A56; background: #FFF8F0; }
+    .q-option.selected { background: #7A5C42; color: #fff; border-color: #7A5C42; }
+    .q-option.correct { background: #5C8A5C; color: #fff; border-color: #5C8A5C; }
+    .q-option.wrong { background: #C47A6C; color: #fff; border-color: #C47A6C; }
     
     /* === Forum === */
     .forum-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-    .forum-tab { padding: 8px 18px; cursor: pointer; border-radius: 8px; background: #e0e0e0; font-weight: 500; }
-    .forum-tab.active { background: #000; color: #fff; }
-    .forum-anon-bar { padding: 12px; background: #f0f0f0; border: 2px solid #000; border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .anon-tag { background: #000; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .forum-tab { padding: 8px 18px; cursor: pointer; border-radius: 8px; background: #F0E8DC; font-weight: 500; color: var(--text-sec); }
+    .forum-tab.active { background: #7A5C42; color: #fff; }
+    .forum-anon-bar { padding: 12px; background: #FFF8F0; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .anon-tag { background: #7A5C42; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
     .school-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 16px; }
-    .school-badge { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; background: #e8e8e8; cursor: pointer; white-space: nowrap; font-size: 13px; font-weight: 500; }
-    .school-badge.active { background: #000; color: #fff; }
+    .school-badge { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; background: #F0E8DC; cursor: pointer; white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--text-sec); }
+    .school-badge.active { background: #7A5C42; color: #fff; }
     .school-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; }
     .forum-post-list { display: grid; gap: 12px; }
     .forum-post-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer; }
@@ -156,28 +158,19 @@
   </style>
 </head>
 <body>
-  <div class="app-container">
-    <div class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <span class="sidebar-logo">白糕平台</span>
-        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-      </div>
-      <div class="nav-item active" onclick="switchPage('home')">
-        <span class="nav-icon">🏠</span><span class="nav-text">首页</span>
-      </div>
-      <div class="nav-item" onclick="switchPage('exam')">
-        <span class="nav-icon">📝</span><span class="nav-text">试卷中心</span>
-      </div>
-      <div class="nav-item" onclick="switchPage('recorder')">
-        <span class="nav-icon">🎙️</span><span class="nav-text">录音笔记</span>
-      </div>
-      <div class="nav-item" onclick="switchPage('forum')">
-        <span class="nav-icon">💬</span><span class="nav-text">论坛</span>
-      </div>
-      <div class="nav-item" onclick="switchPage('profile')">
-        <span class="nav-icon">👤</span><span class="nav-text">我的</span>
-      </div>
+  <!-- 顶部导航栏 -->
+  <div class="top-bar">
+    <span class="top-bar-logo">🐱 白糕平台</span>
+    <div class="top-bar-nav">
+      <div class="nav-item active" onclick="switchPage('home')"><span class="nav-icon">🏠</span>首页</div>
+      <div class="nav-item" onclick="switchPage('exam')"><span class="nav-icon">📝</span>试卷中心</div>
+      <div class="nav-item" onclick="switchPage('recorder')"><span class="nav-icon">🎙️</span>录音笔记</div>
+      <div class="nav-item" onclick="switchPage('forum')"><span class="nav-icon">💬</span>论坛</div>
+      <div class="nav-item" onclick="switchPage('profile')"><span class="nav-icon">👤</span>我的</div>
     </div>
+  </div>
+
+  <div class="app-container">
     <div class="main-content">
       <!-- 首页 -->
       <div class="page active" id="page-home">
@@ -251,28 +244,55 @@
       <!-- 录音笔记 -->
       <div class="page" id="page-recorder">
         <h1 class="page-title">录音笔记</h1>
-        <div class="card">
-          <h3>上传音频文件</h3>
-          <div class="audio-upload-card">
-            <div class="audio-upload-zone" onclick="document.getElementById('audioFileInput').click()">
-              <p>🎵 点击选择音频文件</p>
-              <p style="font-size:12px;color:#999;margin-top:8px;">支持 mp3/wav/ogg/m4a 等格式</p>
+        <div style="display:flex;gap:10px;margin-bottom:20px;">
+          <button class="btn btn-primary" id="recModeBtn" onclick="switchRecMode('live')">🎙️ 实时录音</button>
+          <button class="btn" id="uploadModeBtn" onclick="switchRecMode('upload')">📁 上传文件</button>
+        </div>
+
+        <!-- 实时录音模式 -->
+        <div id="recLivePanel">
+          <div style="display:flex;gap:20px;height:calc(100vh - 220px);">
+            <div style="flex:1;display:flex;flex-direction:column;">
+              <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <h3>📝 实时转写</h3>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span id="recTimer" style="font-size:14px;color:#999;font-variant-numeric:tabular-nums;">00:00</span>
+                    <button class="btn btn-primary" id="recStartBtn" onclick="toggleLiveRecord()" style="border-radius:50%;width:48px;height:48px;font-size:20px;padding:0;">🎤</button>
+                  </div>
+                </div>
+                <div id="liveTranscript" style="flex:1;overflow-y:auto;font-size:15px;line-height:1.8;color:#555;white-space:pre-wrap;">点击麦克风按钮开始录音...</div>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;">
+              <div class="card" style="flex:1;overflow-y:auto;">
+                <h3 style="margin-bottom:12px;">📋 AI 笔记</h3>
+                <div id="liveNotes" style="font-size:14px;line-height:1.8;color:#555;">录音内容会实时整理成笔记...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 上传文件模式 -->
+        <div id="recUploadPanel" style="display:none;">
+          <div class="card">
+            <h3 style="margin-bottom:12px;">上传音频文件</h3>
+            <div class="upload-zone" onclick="document.getElementById('audioFileInput').click()">
+              <p style="font-size:16px;">🎵 点击选择音频文件</p>
+              <p style="font-size:13px;color:#999;margin-top:8px;">支持 mp3/wav/ogg/m4a 等格式</p>
             </div>
             <input type="file" id="audioFileInput" style="display:none" accept="audio/*" onchange="handleAudioFileSelect(event)">
           </div>
-          <div class="audio-player-wrap" id="audioPlayerWrap">
+          <div class="card" id="uploadPlayerCard" style="display:none;">
             <audio id="audioPlayer" controls style="width:100%;margin-bottom:12px;"></audio>
-            <div style="display:flex;gap:10px;">
-              <button class="audio-transcribe-btn" onclick="audioAutoGenerate('mindmap')">🧠 生成思维导图</button>
-              <button class="audio-transcribe-btn" onclick="audioAutoGenerate('notes')">📝 生成笔记</button>
-            </div>
-            <div class="audio-progress" id="audioProgress">
+            <button class="btn btn-primary" onclick="processUploadedAudio()" style="width:100%;">🚀 生成思维导图 + 笔记</button>
+            <div class="audio-progress" id="audioProgress" style="margin-top:10px;">
               <div class="audio-progress-bar"><div class="audio-progress-bar-fill" id="audioProgressFill"></div></div>
               <div class="audio-progress-text" id="audioProgressText">识别中...</div>
             </div>
           </div>
+          <div id="uploadResult" style="margin-top:16px;"></div>
         </div>
-        <div id="audioResult" style="display:none;margin-top:20px;"></div>
       </div>
       
       <!-- 论坛 -->
@@ -1131,101 +1151,201 @@ function sendPrivateMsg() {
 }
 
 // ========== Audio Recorder ==========
-function handleAudioFileSelect(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  const player = document.getElementById('audioPlayer');
-  player.src = url;
-  document.getElementById('audioPlayerWrap').style.display = '';
-  document.getElementById('audioResult').style.display = 'none';
+let isRecording = false;
+let liveRecognition = null;
+let liveTranscript = '';
+let recTimerInterval = null;
+let recStartTime = null;
+let liveNotesTimer = null;
+
+function switchRecMode(mode) {
+  document.getElementById('recLivePanel').style.display = mode === 'live' ? '' : 'none';
+  document.getElementById('recUploadPanel').style.display = mode === 'upload' ? '' : 'none';
+  document.getElementById('recModeBtn').className = mode === 'live' ? 'btn btn-primary' : 'btn';
+  document.getElementById('uploadModeBtn').className = mode === 'upload' ? 'btn btn-primary' : 'btn';
 }
 
-async function audioAutoGenerate(target) {
-  const player = document.getElementById('audioPlayer');
-  if (!player.src) { showToast('请先选择音频文件'); return; }
-  
-  document.getElementById('audioProgress').style.display = '';
-  document.getElementById('audioProgressText').textContent = '识别中...';
-  
-  player.currentTime = 0;
-  player.play();
-  
-  // 使用 Web Speech API 识别
+function toggleLiveRecord() {
+  if (isRecording) { stopLiveRecord(); } else { startLiveRecord(); }
+}
+
+function startLiveRecord() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
     showToast('浏览器不支持语音识别，请使用 Chrome');
     return;
   }
   
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = false;
-  recognition.lang = 'zh-CN';
-  fullTranscript = '';
+  liveRecognition = new SpeechRecognition();
+  liveRecognition.continuous = true;
+  liveRecognition.interimResults = true;
+  liveRecognition.lang = 'zh-CN';
+  liveTranscript = '';
   
-  recognition.onresult = (event) => {
-    for (let i = event.resultIndex; i < event.results.length; i++) {
+  document.getElementById('liveTranscript').textContent = '';
+  document.getElementById('liveNotes').textContent = '录音中，AI 正在整理笔记...';
+  document.getElementById('recStartBtn').style.background = '#c0392b';
+  document.getElementById('recStartBtn').textContent = '⏹';
+  isRecording = true;
+  
+  // 计时器
+  recStartTime = Date.now();
+  document.getElementById('recTimer').textContent = '00:00';
+  recTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - recStartTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('recTimer').textContent = m + ':' + s;
+  }, 1000);
+  
+  let lastFinalIndex = 0;
+  
+  liveRecognition.onresult = (event) => {
+    let interim = '';
+    for (let i = lastFinalIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
-        fullTranscript += event.results[i][0].transcript + ' ';
+        liveTranscript += event.results[i][0].transcript + ' ';
+        lastFinalIndex = i + 1;
+      } else {
+        interim += event.results[i][0].transcript;
       }
+    }
+    // 显示实时转写
+    document.getElementById('liveTranscript').innerHTML = 
+      escapeHtml(liveTranscript) + '<span style="color:#bbb;">' + escapeHtml(interim) + '</span>';
+    document.getElementById('liveTranscript').scrollTop = document.getElementById('liveTranscript').scrollHeight;
+    
+    // 每15秒自动整理一次笔记
+    if (!liveNotesTimer) {
+      liveNotesTimer = setTimeout(() => {
+        generateLiveNotes(liveTranscript);
+        liveNotesTimer = null;
+      }, 15000);
     }
   };
   
-  recognition.onend = async () => {
-    document.getElementById('audioProgress').style.display = 'none';
+  liveRecognition.onend = () => {
+    if (isRecording) {
+      // 自动重启（Chrome会间歇停止）
+      try { liveRecognition.start(); } catch(e) {}
+    }
+  };
+  
+  liveRecognition.onerror = (e) => {
+    if (e.error !== 'aborted' && e.error !== 'no-speech') {
+      console.log('Speech recognition error:', e.error);
+    }
+  };
+  
+  liveRecognition.start();
+}
+
+function stopLiveRecord() {
+  isRecording = false;
+  if (liveRecognition) { try { liveRecognition.stop(); } catch(e) {} }
+  clearInterval(recTimerInterval);
+  clearTimeout(liveNotesTimer);
+  
+  document.getElementById('recStartBtn').style.background = '#7A5C42';
+  document.getElementById('recStartBtn').textContent = '🎤';
+  
+  // 最后整理一次笔记
+  if (liveTranscript.trim()) {
+    generateLiveNotes(liveTranscript);
+  }
+}
+
+async function generateLiveNotes(text) {
+  if (!text.trim()) return;
+  document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">AI 正在整理笔记...</span>';
+  const result = await callDeepSeek([
+    { role: 'user', content: `你是一个学习笔记整理助手。根据以下实时录音转写的文字内容，整理出一份清晰的笔记。要求：\n1. 提取关键要点\n2. 按主题分段\n3. 用编号和缩进展示层级\n4. 标注重要概念\n\n转写内容：\n${text}` }
+  ]);
+  if (result) {
+    document.getElementById('liveNotes').innerHTML = formatAiReply(result);
+  }
+}
+
+// === 上传文件模式 ===
+function handleAudioFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  document.getElementById('audioPlayer').src = url;
+  document.getElementById('uploadPlayerCard').style.display = '';
+  document.getElementById('uploadResult').innerHTML = '';
+}
+
+async function processUploadedAudio() {
+  const player = document.getElementById('audioPlayer');
+  if (!player.src) { showToast('请先选择音频文件'); return; }
+  
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('浏览器不支持语音识别，请使用 Chrome');
+    return;
+  }
+  
+  document.getElementById('audioProgress').style.display = '';
+  document.getElementById('audioProgressText').textContent = '正在识别音频内容...';
+  document.getElementById('audioProgressFill').style.width = '30%';
+  
+  player.currentTime = 0;
+  player.play();
+  
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.lang = 'zh-CN';
+  let transcript = '';
+  
+  rec.onresult = (event) => {
+    for (let i = 0; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        transcript += event.results[i][0].transcript + ' ';
+      }
+    }
+    document.getElementById('audioProgressFill').style.width = '60%';
+  };
+  
+  rec.onend = async () => {
+    document.getElementById('audioProgressFill').style.width = '80%';
     player.pause();
     
-    if (!fullTranscript.trim()) {
-      showToast('未识别到语音内容');
+    if (!transcript.trim()) {
+      document.getElementById('audioProgress').style.display = 'none';
+      showToast('未识别到语音内容，请检查音频是否清晰');
       return;
     }
     
-    document.getElementById('audioProgressText').textContent = '识别完成，正在生成...';
+    document.getElementById('audioProgressText').textContent = '识别完成，正在生成思维导图和笔记...';
     
-    if (target === 'mindmap') {
-      await generateMindMap(fullTranscript);
-    } else if (target === 'notes') {
-      await generateNotes(fullTranscript);
-    }
-  };
-  
-  recognition.onerror = () => {
+    // 同时生成思维导图和笔记
+    const [mindmap, notes] = await Promise.all([
+      callDeepSeek([{ role: 'user', content: `根据以下内容生成思维导图的 Markdown 格式（使用缩进和层级结构），要求结构清晰、重点突出、层次分明：\n\n${transcript}` }]),
+      callDeepSeek([{ role: 'user', content: `根据以下内容生成一份简洁清晰的笔记摘要。要求：\n1. 提取核心要点\n2. 按主题分段\n3. 用编号列表展示\n4. 标注关键概念\n\n内容：\n${transcript}` }])
+    ]);
+    
+    document.getElementById('audioProgressFill').style.width = '100%';
     document.getElementById('audioProgress').style.display = 'none';
-    showToast('语音识别出错');
+    
+    let html = '';
+    if (mindmap) {
+      html += `<div class="card"><h3>🧠 思维导图</h3><pre style="white-space:pre-wrap;font-size:14px;line-height:1.8;margin-top:12px;">${escapeHtml(mindmap)}</pre></div>`;
+    }
+    if (notes) {
+      html += `<div class="card"><h3>📝 笔记摘要</h3><div style="margin-top:12px;line-height:1.8;">${formatAiReply(notes)}</div></div>`;
+    }
+    document.getElementById('uploadResult').innerHTML = html;
   };
   
-  recognition.start();
-}
-
-async function generateMindMap(text) {
-  showToast('正在生成思维导图...');
-  const result = await callDeepSeek([
-    { role: 'user', content: `根据以下内容生成思维导图的 Markdown 格式（使用缩进表示层级），要求结构清晰，重点突出：\n\n${text}` }
-  ]);
-  if (result) {
-    document.getElementById('audioResult').style.display = '';
-    document.getElementById('audioResult').innerHTML = `
-      <div class="card">
-        <h3>🧠 思维导图</h3>
-        <pre style="white-space:pre-wrap;font-size:14px;line-height:1.8;margin-top:12px;">${escapeHtml(result)}</pre>
-      </div>`;
-  }
-}
-
-async function generateNotes(text) {
-  showToast('正在生成笔记...');
-  const result = await callDeepSeek([
-    { role: 'user', content: `根据以下内容生成简洁的笔记摘要，提取关键要点，用编号列表展示：\n\n${text}` }
-  ]);
-  if (result) {
-    document.getElementById('audioResult').style.display = '';
-    document.getElementById('audioResult').innerHTML = `
-      <div class="card">
-        <h3>📝 笔记摘要</h3>
-        <div style="margin-top:12px;line-height:1.8;">${escapeHtml(result)}</div>
-      </div>`;
-  }
+  rec.onerror = () => {
+    document.getElementById('audioProgress').style.display = 'none';
+    player.pause();
+    showToast('语音识别出错，请重试');
+  };
+  
+  rec.start();
 }
 
 // ========== AI Chat (白糕) ==========
@@ -1477,21 +1597,21 @@ updateStats();
 // AI Chat window CSS
 const style = document.createElement('style');
 style.textContent = `
-  #aiCatButton { position: fixed; bottom: 30px; right: 100px; width: 56px; height: 56px; border-radius: 50%; background: #fff; border: 2px solid #000; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden; transition: transform 0.2s; }
-  #aiCatButton:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
-  .ai-chat-window { display: none; position: fixed; bottom: 100px; right: 30px; width: 380px; max-height: 520px; background: #fff; border: 2px solid #000; border-radius: 16px; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,0.15); z-index: 1000; resize: both; overflow: hidden; min-width: 280px; min-height: 300px; }
+  #aiCatButton { position: fixed; bottom: 30px; right: 100px; width: 56px; height: 56px; border-radius: 50%; background: #FFF5E6; border: 2px solid #9C7A56; cursor: pointer; box-shadow: 0 4px 12px rgba(92,64,51,0.15); z-index: 999; display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden; transition: transform 0.2s; }
+  #aiCatButton:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(92,64,51,0.25); }
+  .ai-chat-window { display: none; position: fixed; bottom: 100px; right: 30px; width: 380px; max-height: 520px; background: #fff; border: 1px solid #E8DDD0; border-radius: 16px; flex-direction: column; box-shadow: 0 8px 30px rgba(92,64,51,0.12); z-index: 1000; resize: both; overflow: hidden; min-width: 280px; min-height: 300px; }
   .ai-chat-window.active { display: flex; }
-  .ai-chat-header { padding: 10px 16px; border-bottom: 2px solid #000; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; gap: 8px; background: #fafafa; }
-  .ai-chat-title { font-weight: 800; font-size: 15px; }
-  .ai-chat-header button { background: none; border: none; cursor: pointer; font-size: 18px; color: #000; font-weight: 700; }
+  .ai-chat-header { padding: 10px 16px; border-bottom: 1px solid #E8DDD0; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; gap: 8px; background: #FAF6F0; }
+  .ai-chat-title { font-weight: 700; font-size: 15px; color: #4A3728; }
+  .ai-chat-header button { background: none; border: none; cursor: pointer; font-size: 18px; color: #8B7355; font-weight: 700; }
   .ai-chat-body { flex: 1; padding: 16px; overflow-y: auto; min-height: 200px; background: #fff; }
   .ai-msg { padding: 10px 14px; border-radius: 12px; margin: 6px 0; max-width: 85%; font-size: 14px; line-height: 1.6; }
-  .ai-msg.user { background: #000; color: #fff; margin-left: auto; border: 2px solid #000; }
-  .ai-msg.assistant { background: #f0f0f0; border: 1px solid #ddd; }
+  .ai-msg.user { background: #7A5C42; color: #fff; margin-left: auto; }
+  .ai-msg.assistant { background: #FFF5E6; border: 1px solid #E8DDD0; color: #4A3728; }
   .ai-msg.thinking { color: #999; font-style: italic; }
-  .ai-chat-input-area { display: flex; gap: 8px; padding: 12px 16px; border-top: 2px solid #000; background: #fafafa; }
-  .ai-chat-input-area input { flex: 1; padding: 10px 14px; border: 2px solid #000; border-radius: 20px; }
-  .ai-chat-input-area button { padding: 10px 20px; border-radius: 20px; background: #000; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+  .ai-chat-input-area { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #E8DDD0; background: #FAF6F0; }
+  .ai-chat-input-area input { flex: 1; padding: 10px 14px; border: 1px solid #E8DDD0; border-radius: 20px; }
+  .ai-chat-input-area button { padding: 10px 20px; border-radius: 20px; background: #7A5C42; color: #fff; border: none; cursor: pointer; font-weight: 600; }
 `;
 document.head.appendChild(style);
 

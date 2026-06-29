@@ -2086,16 +2086,36 @@ async function startLiveRecord() {
         // 忽略无语音错误，继续录音
         return;
       }
-      document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 语音识别错误：' + event.error + '</span>';
+      if (event.error === 'aborted') {
+        return; // 被中止也忽略
+      }
+      // 致命错误（not-allowed, service-not-allowed, network 等），自动降级到 MediaRecorder
+      console.warn('Web Speech API 失败，自动降级到 MediaRecorder 模式');
+      isRecording = false;
+      window._speechApiFailed = true;
+      window._currentRecognition = null;
+      window._getFinalTranscript = null;
+      try { recognition.stop(); } catch(e) {}
+      document.getElementById('liveTranscript').innerHTML = '<span style="color:#e67e22;">⚠️ 浏览器实时识别不可用（' + event.error + '），已切换到录音转写模式...</span>';
+      setTimeout(() => { startMediaRecorderFallback(); }, 500);
     };
     
     recognition.onend = () => {
+      // 如果是因为降级而停止，不再重启
+      if (window._speechApiFailed) {
+        window._speechApiFailed = false;
+        return;
+      }
       // 如果还在录音状态，自动重启（处理浏览器自动停止的情况）
       if (isRecording) {
         try {
           recognition.start();
         } catch (e) {
-          // 忽略重启失败
+          // 重启失败，降级到 MediaRecorder
+          console.warn('Web Speech API 重启失败，降级到 MediaRecorder');
+          isRecording = false;
+          document.getElementById('liveTranscript').innerHTML = '<span style="color:#e67e22;">⚠️ 实时识别中断，已切换到录音转写模式...</span>';
+          setTimeout(() => { startMediaRecorderFallback(); }, 500);
         }
       }
     };
@@ -2125,7 +2145,9 @@ async function startLiveRecord() {
       window._getFinalTranscript = () => finalTranscript;
       
     } catch (e) {
-      document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 无法启动语音识别：' + e.message + '</span>';
+      console.warn('Web Speech API start 失败，降级到 MediaRecorder:', e.message);
+      document.getElementById('liveTranscript').innerHTML = '<span style="color:#e67e22;">⚠️ 浏览器语音识别启动失败，已切换到录音转写模式...</span>';
+      setTimeout(() => { startMediaRecorderFallback(); }, 500);
     }
   } else {
     // 降级方案：使用 MediaRecorder + DashScope（非实时）

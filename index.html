@@ -1380,6 +1380,10 @@ function startLiveRecord() {
   }
   
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 当前浏览器不支持语音识别<br><br>请使用 <b>Chrome 浏览器</b> 打开此页面，<br>并确保已授权麦克风权限。</span>';
+    return;
+  }
   liveRecognition = new SpeechRecognition();
   liveRecognition.continuous = true;
   liveRecognition.interimResults = true;
@@ -1387,7 +1391,7 @@ function startLiveRecord() {
   liveRecognition.maxAlternatives = 1;
   liveTranscript = '';
   
-  document.getElementById('liveTranscript').textContent = '';
+  document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;">🎙️ 正在监听中...请开始说话</span><br><br>';
   document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">录音中，AI 正在整理笔记...</span>';
   document.getElementById('recStartBtn').style.background = '#c0392b';
   document.getElementById('recStartBtn').textContent = '⏹';
@@ -1437,8 +1441,18 @@ function startLiveRecord() {
   };
   
   liveRecognition.onerror = (e) => {
-    if (e.error !== 'aborted' && e.error !== 'no-speech') {
-      console.log('Speech recognition error:', e.error);
+    const errMap = {
+      'not-allowed': '麦克风权限被拒绝，请在浏览器设置中允许麦克风访问',
+      'no-speech': '未检测到语音，请确保麦克风正常工作并对着麦克风说话',
+      'audio-capture': '未找到麦克风设备',
+      'network': '网络错误，语音识别需要联网'
+    };
+    const msg = errMap[e.error] || ('识别错误：' + e.error);
+    document.getElementById('liveTranscript').innerHTML += '<br><span style="color:#e74c3c;">⚠️ ' + msg + '</span><br>';
+    if (e.error === 'not-allowed' || e.error === 'audio-capture') {
+      isRecording = false;
+      document.getElementById('recStartBtn').style.background = '#7A5C42';
+      document.getElementById('recStartBtn').textContent = '🎤';
     }
   };
   

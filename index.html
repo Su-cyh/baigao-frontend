@@ -1679,9 +1679,18 @@ async function callDashScopeASR(audioBlob) {
     return null;
   }
   
-  // Convert audio blob to base64 data URL
-  const base64 = await blobToBase64(audioBlob);
+  // Convert audio blob to pure base64 (without data URL prefix)
+  const dataUrl = await blobToBase64(audioBlob);
+  // 去掉 data:audio/xxx;base64, 前缀，只保留纯 base64
+  const base64 = dataUrl.split(',')[1];
   const mimeType = audioBlob.type || 'audio/webm';
+  // 推断音频格式
+  let audioFormat = 'wav';
+  if (mimeType.includes('webm')) audioFormat = 'webm';
+  else if (mimeType.includes('ogg')) audioFormat = 'ogg';
+  else if (mimeType.includes('mp3')) audioFormat = 'mp3';
+  else if (mimeType.includes('mp4') || mimeType.includes('m4a')) audioFormat = 'mp4';
+  else if (mimeType.includes('wav')) audioFormat = 'wav';
   
   const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
     method: 'POST',
@@ -1696,7 +1705,8 @@ async function callDashScopeASR(audioBlob) {
         content: [{
           type: 'input_audio',
           input_audio: {
-            data: base64
+            data: base64,
+            format: audioFormat
           }
         }]
       }]
@@ -1705,6 +1715,7 @@ async function callDashScopeASR(audioBlob) {
   
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
+    console.error('DashScope ASR 错误:', errData);
     throw new Error(errData.error?.message || ('HTTP ' + response.status));
   }
   
@@ -1839,6 +1850,8 @@ function handleAudioFileSelect(e) {
   document.getElementById('audioPlayer').src = url;
   document.getElementById('uploadPlayerCard').style.display = '';
   document.getElementById('uploadResult').innerHTML = '';
+  // 自动开始识别
+  processUploadedAudio();
 }
 
 async function processUploadedAudio() {

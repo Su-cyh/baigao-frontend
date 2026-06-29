@@ -2857,7 +2857,10 @@ function renderWrongBook() {
     html += `<div class="card" style="margin-bottom:10px;padding:14px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <span style="font-weight:600;font-size:13px;color:#7A5C42;">第${i+1}题 [${q.type}] · ${escapeHtml(q.source)}</span>
-        <span style="font-size:11px;color:#aaa;">${time}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:#aaa;">${time}</span>
+          <button onclick="deleteWrongQuestion(${i})" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:16px;padding:2px 6px;" title="删除此题">✕</button>
+        </div>
       </div>
       <div style="font-size:14px;line-height:1.7;margin-bottom:8px;">${escapeHtml(q.content)}</div>
       ${q.options ? '<div style="font-size:13px;color:#666;margin-bottom:6px;">' + q.options.map(o => escapeHtml(o)).join(' &nbsp;|&nbsp; ') + '</div>' : ''}
@@ -2868,6 +2871,16 @@ function renderWrongBook() {
     </div>`;
   });
   container.innerHTML = html;
+}
+
+function deleteWrongQuestion(index) {
+  const wrongBook = getWrongBook();
+  if (index >= 0 && index < wrongBook.length) {
+    wrongBook.splice(index, 1);
+    localStorage.setItem('wrong_questions', JSON.stringify(wrongBook));
+    renderWrongBook();
+    showToast('已删除该错题');
+  }
 }
 
 function clearWrongBook() {

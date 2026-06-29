@@ -20,6 +20,9 @@
     .app-container { display: flex; height: 100vh; }
     .sidebar { width: 200px; background: #FFF8F0; border-right: 1px solid var(--border); padding: 20px 0; transition: width 0.3s; overflow: hidden; flex-shrink: 0; }
     .sidebar.collapsed { width: 60px; }
+    .sidebar.collapsed .sidebar-logo { display: none; }
+    .sidebar.collapsed .sidebar-header { justify-content: center; padding: 0 10px 20px; }
+    .sidebar.collapsed .sidebar-toggle { font-size: 22px; }
     .sidebar-header { padding: 0 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .sidebar-logo { font-size: 18px; font-weight: 700; white-space: nowrap; }
     .sidebar-toggle { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text-sec); }

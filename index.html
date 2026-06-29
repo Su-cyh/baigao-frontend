@@ -764,6 +764,7 @@ function switchExamTab(tab) {
 // ========== 逐题出题 ==========
 let examSourceContent = '';
 let examSourceFileName = '';
+let examSourceTitle = '';
 let examGeneratedQuestions = [];
 let examCurrentIndex = 0;
 let examTotalCount = 5;
@@ -795,12 +796,34 @@ async function handleExamFile(e) {
 let examCorrectCount = 0;
 let examAnswerStatus = []; // 0=未答, 1=正确, 2=错误
 
+function enterExamMode(questions, title) {
+  examGeneratedQuestions = questions.map((q, i) => ({ ...q, _index: i + 1, _userAnswer: '' }));
+  examTotalCount = questions.length;
+  examCurrentIndex = 0;
+  examCorrectCount = 0;
+  examAnswerStatus = new Array(examTotalCount).fill(0);
+  examSourceTitle = title;
+
+  // 隐藏配置和预览，显示答题区
+  document.getElementById('examConfig').style.display = 'none';
+  document.getElementById('examPreview').style.display = 'none';
+  document.getElementById('examOneByOne').style.display = '';
+  document.getElementById('examLoadingAll').style.display = 'none';
+  document.getElementById('examMainView').style.display = '';
+  document.getElementById('examFinalView').style.display = 'none';
+
+  examCurrentIndex = 1;
+  renderQuestionGrid();
+  renderCurrentQuestion();
+}
+
 async function startOneByOneExam() {
   examTotalCount = parseInt(document.getElementById('examQuestionCount').value);
   examGeneratedQuestions = [];
   examCurrentIndex = 0;
   examCorrectCount = 0;
   examAnswerStatus = new Array(examTotalCount).fill(0);
+  examSourceTitle = 'AI 生成试卷 - ' + (examSourceFileName || '资料');
   
   // 隐藏配置，显示答题区，显示加载中
   document.getElementById('examConfig').style.display = 'none';
@@ -1055,13 +1078,13 @@ function finishOneByOneExam() {
   
   // 组装试卷数据
   currentExam = {
-    title: 'AI 生成试卷 - ' + examSourceFileName,
+    title: examSourceTitle,
     questions: examGeneratedQuestions.map(q => ({
       type: q.type, content: q.content, options: q.options, answer: q.answer
     })),
     date: new Date().toISOString(),
     saveTime: Date.now(),
-    source: 'ai'
+    source: examSourceTitle.includes('延伸') ? 'extend' : (examSourceTitle.includes('整理') ? 'organize' : 'ai')
   };
 }
 
@@ -1069,7 +1092,9 @@ function resetExamView() {
   document.getElementById('examFinalView').style.display = 'none';
   document.getElementById('examMainView').style.display = 'none';
   document.getElementById('examOneByOne').style.display = 'none';
+  document.getElementById('examPreview').style.display = 'none';
   document.getElementById('examConfig').style.display = '';
+  document.getElementById('extendConfig').style.display = 'none';
 }
 
 async function handleOrganizeFile(e) {
@@ -1098,7 +1123,7 @@ async function organizeQuestionsToExam() {
       const cleaned = cleanJsonResponse(result);
       const exam = JSON.parse(cleaned);
       currentExam = { title: exam.title || '整理试卷', questions: exam.questions, date: new Date().toISOString(), source: 'organize' };
-      showExamPreview(currentExam);
+      enterExamMode(exam.questions, exam.title || '整理试卷');
       showToast('整理成功！');
     } catch(err) {
       showToast('整理失败，请重试');
@@ -1140,7 +1165,7 @@ async function extendExamQuestions() {
       const cleaned = cleanJsonResponse(result);
       const exam = JSON.parse(cleaned);
       currentExam = { title: exam.title || '延伸试卷', questions: exam.questions, date: new Date().toISOString(), source: 'extend' };
-      showExamPreview(currentExam);
+      enterExamMode(exam.questions, exam.title || '延伸试卷');
       showToast('延伸题生成成功！');
     } catch(err) {
       showToast('生成失败，请重试');

@@ -1663,6 +1663,8 @@ let audioChunks = [];
 let recTimerInterval = null;
 let recStartTime = null;
 let liveStream = null;
+let recognition = null;
+let useFallbackMode = false;
 
 function switchRecMode(mode) {
   document.getElementById('recLivePanel').style.display = mode === 'live' ? '' : 'none';
@@ -1738,6 +1740,92 @@ function toggleLiveRecord() {
 }
 
 async function startLiveRecord() {
+  // 优先使用 Web Speech API 实现实时转写
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (SpeechRecognition) {
+    // 使用 Web Speech API 进行实时转写
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'zh-CN';
+    
+    let finalTranscript = '';
+    
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      // 实时显示：已确认的文字 + 临时的灰色文字
+      let displayText = '<div style="white-space:pre-wrap;line-height:1.8;">' + escapeHtml(finalTranscript);
+      if (interimTranscript) {
+        displayText += '<span style="color:#999;">' + escapeHtml(interimTranscript) + '</span>';
+      }
+      displayText += '</div>';
+      document.getElementById('liveTranscript').innerHTML = displayText;
+      document.getElementById('liveTranscript').style.color = '#555';
+    };
+    
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'no-speech') {
+        // 忽略无语音错误，继续录音
+        return;
+      }
+      document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 语音识别错误：' + event.error + '</span>';
+    };
+    
+    recognition.onend = () => {
+      // 如果还在录音状态，自动重启（处理浏览器自动停止的情况）
+      if (isRecording) {
+        try {
+          recognition.start();
+        } catch (e) {
+          // 忽略重启失败
+        }
+      }
+    };
+    
+    try {
+      recognition.start();
+      isRecording = true;
+      
+      document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;">🎙️ 正在录音中...请开始说话</span><br><span style="color:#999;font-size:13px;">实时转写中</span>';
+      document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">录音结束后自动整理笔记...</span>';
+      document.getElementById('recStartBtn').style.background = '#c0392b';
+      document.getElementById('recStartBtn').textContent = '⏹';
+      
+      recStartTime = Date.now();
+      document.getElementById('recTimer').textContent = '00:00';
+      recTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recStartTime) / 1000);
+        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const s = String(elapsed % 60).padStart(2, '0');
+        document.getElementById('recTimer').textContent = m + ':' + s;
+      }, 1000);
+      
+      // 保存 finalTranscript 的引用，供 stopLiveRecord 使用
+      window._currentRecognition = recognition;
+      window._getFinalTranscript = () => finalTranscript;
+      
+    } catch (e) {
+      document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 无法启动语音识别：' + e.message + '</span>';
+    }
+  } else {
+    // 降级方案：使用 MediaRecorder + DashScope（非实时）
+    document.getElementById('liveTranscript').innerHTML = '<span style="color:#e67e22;">⚠️ 浏览器不支持实时语音识别，将使用录音后识别模式</span>';
+    await startMediaRecorderFallback();
+  }
+}
+
+// 降级方案：MediaRecorder + DashScope
+async function startMediaRecorderFallback() {
   try {
     liveStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
@@ -1747,7 +1835,6 @@ async function startLiveRecord() {
     return;
   }
   
-  // 选择最佳支持的音频格式
   const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4', 'audio/wav'];
   let selectedMime = '';
   for (const mt of mimeTypes) {
@@ -1763,7 +1850,6 @@ async function startLiveRecord() {
   };
   
   mediaRecorder.onstop = async () => {
-    // 停止所有音轨
     if (liveStream) liveStream.getTracks().forEach(t => t.stop());
     
     const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
@@ -1786,7 +1872,6 @@ async function startLiveRecord() {
       document.getElementById('liveTranscript').innerHTML = '<div style="white-space:pre-wrap;line-height:1.8;">' + escapeHtml(transcript) + '</div>';
       document.getElementById('liveTranscript').style.color = '#555';
       
-      // 生成笔记
       generateLiveNotes(transcript);
     } catch (e) {
       document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 语音识别失败：' + escapeHtml(e.message) + '</span>';
@@ -1795,6 +1880,7 @@ async function startLiveRecord() {
   
   mediaRecorder.start(1000);
   isRecording = true;
+  useFallbackMode = true;
   
   document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;">🎙️ 正在录音中...请开始说话</span><br><span style="color:#999;font-size:13px;">录音结束后将自动识别</span>';
   document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">录音结束后自动整理笔记...</span>';
@@ -1813,6 +1899,38 @@ async function startLiveRecord() {
 
 function stopLiveRecord() {
   isRecording = false;
+  
+  // 如果是 Web Speech API 模式
+  if (window._currentRecognition) {
+    try {
+      window._currentRecognition.stop();
+    } catch (e) {
+      // 忽略停止失败
+    }
+    
+    // 获取最终转写结果
+    const finalTranscript = window._getFinalTranscript ? window._getFinalTranscript() : '';
+    
+    clearInterval(recTimerInterval);
+    document.getElementById('recStartBtn').style.background = '#7A5C42';
+    document.getElementById('recStartBtn').textContent = '🎤';
+    
+    // 清理引用
+    window._currentRecognition = null;
+    window._getFinalTranscript = null;
+    
+    if (finalTranscript && finalTranscript.trim()) {
+      // 更新显示，移除临时文字样式
+      document.getElementById('liveTranscript').innerHTML = '<div style="white-space:pre-wrap;line-height:1.8;">' + escapeHtml(finalTranscript) + '</div>';
+      // 自动生成笔记
+      generateLiveNotes(finalTranscript);
+    } else {
+      document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 未检测到语音内容，请确保麦克风正常工作并清晰说话</span>';
+    }
+    return;
+  }
+  
+  // MediaRecorder 降级模式
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try { mediaRecorder.stop(); } catch(e) {}
   }

@@ -68,6 +68,8 @@
     .rec-pulse { animation: pulse 1.2s infinite; }
     .live-final { color: #e0e0e0; }
     .live-interim { color: #888; font-style:italic; border-bottom:1px dashed #555; }
+    .live-partial { color: #e0e0e0; }
+    .live-recognizing { color: #f39c12; font-size:13px; animation: pulse 1.2s infinite; }
     
     /* === Forum === */
     .forum-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -1967,6 +1969,10 @@ let recStartTime = null;
 let liveStream = null;
 let recognition = null;
 let useFallbackMode = false;
+let livePartialTranscript = '';
+let isRecognizingLive = false;
+let pendingLiveRecognition = false;
+let liveRecognitionTimer = null;
 
 function switchRecMode(mode) {
   document.getElementById('recLivePanel').style.display = mode === 'live' ? '' : 'none';
@@ -2128,7 +2134,7 @@ async function startLiveRecord() {
   }
 }
 
-// 降级方案：MediaRecorder + DashScope
+// 降级方案：MediaRecorder + DashScope（近实时转写）
 async function startMediaRecorderFallback() {
   try {
     liveStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -2148,13 +2154,21 @@ async function startMediaRecorderFallback() {
   const options = selectedMime ? { mimeType: selectedMime } : {};
   mediaRecorder = new MediaRecorder(liveStream, options);
   audioChunks = [];
+  livePartialTranscript = '';
+  isRecognizingLive = false;
+  pendingLiveRecognition = false;
   
   mediaRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) audioChunks.push(e.data);
+    if (e.data.size > 0) {
+      audioChunks.push(e.data);
+      // 每收到新音频片段，触发一次识别
+      scheduleLiveRecognition();
+    }
   };
   
   mediaRecorder.onstop = async () => {
     if (liveStream) liveStream.getTracks().forEach(t => t.stop());
+    if (liveRecognitionTimer) { clearTimeout(liveRecognitionTimer); liveRecognitionTimer = null; }
     
     const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
     
@@ -2163,29 +2177,46 @@ async function startMediaRecorderFallback() {
       return;
     }
     
-    document.getElementById('liveTranscript').innerHTML = '<span style="color:#7A5C42;">⏳ 正在使用 AI 识别语音...</span>';
-    document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">等待识别完成后整理笔记...</span>';
+    // 等待正在进行的识别完成
+    if (isRecognizingLive) {
+      document.getElementById('liveTranscript').innerHTML = 
+        (livePartialTranscript ? '<span class="live-final">' + escapeHtml(livePartialTranscript) + '</span>' : '') +
+        '<span class="live-recognizing"> ⏳ 最终识别中...</span>';
+      await new Promise(r => setTimeout(r, 500));
+      // 再等最多10秒
+      for (let i = 0; i < 20 && isRecognizingLive; i++) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    
+    // 最终完整识别
+    document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">正在整理笔记...</span>';
     
     try {
       const transcript = await callDashScopeASR(audioBlob);
-      if (!transcript) {
+      const finalText = transcript || livePartialTranscript;
+      if (finalText && finalText.trim()) {
+        document.getElementById('liveTranscript').innerHTML = '<span class="live-final">' + escapeHtml(finalText) + '</span>';
+        generateLiveNotes(finalText);
+      } else {
         document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 未能识别到语音内容，请确保录音清晰</span>';
-        return;
       }
-      
-      document.getElementById('liveTranscript').innerHTML = '<span class="live-final">' + escapeHtml(transcript) + '</span>';
-      
-      generateLiveNotes(transcript);
     } catch (e) {
-      document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 语音识别失败：' + escapeHtml(e.message) + '</span>';
+      if (livePartialTranscript && livePartialTranscript.trim()) {
+        document.getElementById('liveTranscript').innerHTML = '<span class="live-final">' + escapeHtml(livePartialTranscript) + '</span>';
+        generateLiveNotes(livePartialTranscript);
+      } else {
+        document.getElementById('liveTranscript').innerHTML = '<span style="color:#e74c3c;">❌ 语音识别失败：' + escapeHtml(e.message) + '</span>';
+      }
     }
   };
   
-  mediaRecorder.start(1000);
+  // 每 5 秒产生一个音频片段，用于近实时识别
+  mediaRecorder.start(5000);
   isRecording = true;
   useFallbackMode = true;
   
-  document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;font-size:15px;">🎙️ 正在录音中...请开始说话</span><br><span style="color:#666;font-size:13px;">录音结束后将自动识别</span>';
+  document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;font-size:15px;">🎙️ 正在录音中...请开始说话</span><br><span style="color:#666;font-size:13px;">实时转写中，文字将随语音逐步显示...</span>';
   document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">录音结束后自动整理笔记...</span>';
   document.getElementById('recStartBtn').style.background = '#c0392b';
   document.getElementById('recStartBtn').textContent = '⏹';
@@ -2200,6 +2231,57 @@ async function startMediaRecorderFallback() {
     const s = String(elapsed % 60).padStart(2, '0');
     document.getElementById('recTimer').textContent = m + ':' + s;
   }, 1000);
+}
+
+// 节流触发近实时识别（录音中降级模式）
+function scheduleLiveRecognition() {
+  if (liveRecognitionTimer) clearTimeout(liveRecognitionTimer);
+  liveRecognitionTimer = setTimeout(() => {
+    doLiveRecognition();
+  }, 2000); // 等 2 秒让音频积累一些
+}
+
+async function doLiveRecognition() {
+  if (!isRecording || audioChunks.length === 0) return;
+  
+  if (isRecognizingLive) {
+    pendingLiveRecognition = true;
+    return;
+  }
+  
+  isRecognizingLive = true;
+  const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+  
+  if (blob.size < 1000) {
+    isRecognizingLive = false;
+    return;
+  }
+  
+  // 显示"识别中"状态
+  const el = document.getElementById('liveTranscript');
+  const prevText = livePartialTranscript ? '<span class="live-partial">' + escapeHtml(livePartialTranscript) + '</span>' : '';
+  el.innerHTML = prevText + '<span class="live-recognizing"> ⏳ 识别中...</span>';
+  
+  try {
+    const transcript = await callDashScopeASR(blob);
+    if (transcript && transcript.trim()) {
+      livePartialTranscript = transcript;
+      if (isRecording) {
+        el.innerHTML = '<span class="live-partial">' + escapeHtml(transcript) + '</span><span class="live-recognizing"> 🎤 聆听中...</span>';
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  } catch(e) {
+    console.error('实时识别错误:', e);
+  }
+  
+  isRecognizingLive = false;
+  
+  // 如果有排队的识别请求，继续处理
+  if (pendingLiveRecognition && isRecording) {
+    pendingLiveRecognition = false;
+    doLiveRecognition();
+  }
 }
 
 function stopLiveRecord() {

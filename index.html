@@ -260,9 +260,30 @@
                 <span id="examLoading" style="display:none;color:#7A5C42;font-size:14px;">⏳ AI 出题中...</span>
               </div>
               <div id="examQuestionContent" style="line-height:1.8;"></div>
-              <div id="examAnswerArea" style="margin-top:16px;display:none;">
+              <!-- 作答区域 -->
+              <div id="examInputArea" style="margin-top:16px;display:none;border-top:1px dashed #E8DDD0;padding-top:16px;">
+                <p style="font-weight:600;color:#7A5C42;margin-bottom:10px;">✏️ 你的答案</p>
+                <div id="examChoiceInput" style="display:none;"></div>
+                <div id="examTextInput" style="display:none;">
+                  <input type="text" id="examAnswerInput" placeholder="输入你的答案..." style="width:100%;margin-bottom:10px;">
+                </div>
+                <div id="examJudgeInput" style="display:none;">
+                  <div style="display:flex;gap:10px;">
+                    <label style="display:flex;align-items:center;gap:6px;padding:10px 20px;border:1px solid var(--border);border-radius:8px;cursor:pointer;flex:1;justify-content:center;">
+                      <input type="radio" name="judgeAnswer" value="正确"> 正确
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;padding:10px 20px;border:1px solid var(--border);border-radius:8px;cursor:pointer;flex:1;justify-content:center;">
+                      <input type="radio" name="judgeAnswer" value="错误"> 错误
+                    </label>
+                  </div>
+                </div>
+                <button class="btn btn-primary" id="examSubmitBtn" onclick="submitAnswer()" style="margin-top:8px;">提交答案</button>
+              </div>
+              <!-- 结果区域（提交后显示） -->
+              <div id="examResultArea" style="margin-top:16px;display:none;">
+                <div id="examResultMsg" style="padding:12px;border-radius:8px;margin-bottom:12px;font-weight:600;"></div>
                 <div style="border-top:1px dashed #E8DDD0;padding-top:12px;">
-                  <p style="font-weight:600;color:#7A5C42;margin-bottom:8px;">📖 参考答案</p>
+                  <p style="font-weight:600;color:#7A5C42;margin-bottom:8px;">📖 正确答案</p>
                   <div id="examAnswerContent" style="color:#555;line-height:1.8;"></div>
                 </div>
               </div>
@@ -272,9 +293,9 @@
               <button class="btn btn-primary" id="examNextBtn" onclick="generateNextQuestion()" style="display:none;">下一题 →</button>
               <button class="btn btn-primary" id="examFinishBtn" onclick="finishOneByOneExam()" style="display:none;background:#27ae60;border-color:#27ae60;">完成并保存试卷</button>
             </div>
-            <!-- 已生成的题目列表 -->
-            <div class="card" style="margin-top:16px;">
-              <h3 style="margin-bottom:12px;">📋 已生成的题目 (<span id="generatedCount">0</span>)</h3>
+            <!-- 已生成的题目列表（完成后展示） -->
+            <div class="card" id="examFinalList" style="margin-top:16px;display:none;">
+              <h3 style="margin-bottom:12px;">📋 全部题目 (<span id="generatedCount">0</span>)</h3>
               <div id="examGeneratedList" style="max-height:400px;overflow-y:auto;"></div>
             </div>
           </div>
@@ -742,15 +763,18 @@ async function handleExamFile(e) {
   }
 }
 
+let examCorrectCount = 0;
+
 function startOneByOneExam() {
   examTotalCount = parseInt(document.getElementById('examQuestionCount').value);
   examGeneratedQuestions = [];
   examCurrentIndex = 0;
+  examCorrectCount = 0;
   
   // 隐藏配置，显示逐题区域
   document.getElementById('examConfig').style.display = 'none';
   document.getElementById('examOneByOne').style.display = '';
-  document.getElementById('examGeneratedList').innerHTML = '<p style="color:#999;font-size:14px;">等待生成...</p>';
+  document.getElementById('examFinalList').style.display = 'none';
   document.getElementById('generatedCount').textContent = '0';
   
   // 开始生成第一题
@@ -764,9 +788,13 @@ async function generateNextQuestion() {
   document.getElementById('examProgress').textContent = '第 ' + examCurrentIndex + ' / ' + examTotalCount + ' 题';
   document.getElementById('examLoading').style.display = '';
   document.getElementById('examQuestionContent').innerHTML = '<span style="color:#999;">AI 正在出题...</span>';
-  document.getElementById('examAnswerArea').style.display = 'none';
+  
+  // 隐藏作答区、结果区、按钮
+  document.getElementById('examInputArea').style.display = 'none';
+  document.getElementById('examResultArea').style.display = 'none';
   document.getElementById('examNextBtn').style.display = 'none';
   document.getElementById('examSkipBtn').style.display = 'none';
+  document.getElementById('examFinishBtn').style.display = 'none';
   
   // 构建类型提示
   const typeMap = {
@@ -815,40 +843,47 @@ async function generateNextQuestion() {
       return;
     }
     
-    // 存储题目
+    // 存储题目（暂存，提交答案后才算完成）
     question._index = examCurrentIndex;
+    question._userAnswer = '';
     examGeneratedQuestions.push(question);
-    document.getElementById('generatedCount').textContent = examGeneratedQuestions.length;
     
-    // 显示题目
+    // 显示题目（不含答案）
     let qHtml = `<div style="font-weight:600;margin-bottom:8px;">第 ${examCurrentIndex} 题 [${question.type}]</div>`;
     qHtml += `<div style="margin-bottom:12px;">${escapeHtml(question.content)}</div>`;
-    
-    if (question.type === '选择题' && question.options) {
-      qHtml += '<div style="display:flex;flex-direction:column;gap:6px;">';
-      question.options.forEach(opt => {
-        qHtml += `<div style="padding:8px 12px;background:#FFF8F0;border-radius:6px;font-size:14px;">${escapeHtml(opt)}</div>`;
-      });
-      qHtml += '</div>';
-    }
-    
     document.getElementById('examQuestionContent').innerHTML = qHtml;
     
-    // 显示答案
-    document.getElementById('examAnswerArea').style.display = '';
-    document.getElementById('examAnswerContent').textContent = question.answer || '暂无答案';
+    // 根据题型显示对应输入方式
+    document.getElementById('examChoiceInput').style.display = 'none';
+    document.getElementById('examTextInput').style.display = 'none';
+    document.getElementById('examJudgeInput').style.display = 'none';
+    document.getElementById('examAnswerInput').value = '';
     
-    // 更新已生成列表
-    updateGeneratedList();
-    
-    // 显示按钮
-    if (examCurrentIndex < examTotalCount) {
-      document.getElementById('examNextBtn').style.display = '';
-      document.getElementById('examNextBtn').textContent = '下一题 →';
-      document.getElementById('examSkipBtn').style.display = '';
+    if (question.type === '选择题' && question.options) {
+      // 选择题：显示可点击的选项
+      let choiceHtml = '<div style="display:flex;flex-direction:column;gap:6px;">';
+      question.options.forEach((opt, idx) => {
+        const letter = String.fromCharCode(65 + idx); // A, B, C, D
+        choiceHtml += `<label class="q-option" style="display:flex;align-items:center;gap:8px;" onclick="selectChoice(this, '${letter}')">
+          <input type="radio" name="choiceAnswer" value="${letter}" style="flex-shrink:0;">
+          <span>${escapeHtml(opt)}</span>
+        </label>`;
+      });
+      choiceHtml += '</div>';
+      document.getElementById('examChoiceInput').innerHTML = choiceHtml;
+      document.getElementById('examChoiceInput').style.display = '';
+    } else if (question.type === '判断题') {
+      document.getElementById('examJudgeInput').style.display = '';
     } else {
-      document.getElementById('examFinishBtn').style.display = '';
+      // 填空题、简答题：文本输入
+      document.getElementById('examTextInput').style.display = '';
     }
+    
+    // 显示作答区域和跳过按钮
+    document.getElementById('examInputArea').style.display = '';
+    document.getElementById('examSubmitBtn').disabled = false;
+    document.getElementById('examSubmitBtn').textContent = '提交答案';
+    document.getElementById('examSkipBtn').style.display = '';
     
   } catch(e) {
     document.getElementById('examLoading').style.display = 'none';
@@ -857,8 +892,89 @@ async function generateNextQuestion() {
   }
 }
 
-function skipCurrentQuestion() {
+function selectChoice(el, letter) {
+  document.querySelectorAll('#examChoiceInput .q-option').forEach(opt => opt.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input[type="radio"]').checked = true;
+}
+
+function getUserAnswer() {
+  const question = examGeneratedQuestions[examGeneratedQuestions.length - 1];
+  if (!question) return '';
+  
+  if (question.type === '选择题') {
+    const checked = document.querySelector('input[name="choiceAnswer"]:checked');
+    return checked ? checked.value : '';
+  } else if (question.type === '判断题') {
+    const checked = document.querySelector('input[name="judgeAnswer"]:checked');
+    return checked ? checked.value : '';
+  } else {
+    return document.getElementById('examAnswerInput').value.trim();
+  }
+}
+
+function submitAnswer() {
+  const userAnswer = getUserAnswer();
+  if (!userAnswer) { showToast('请先作答再提交'); return; }
+  
+  const question = examGeneratedQuestions[examGeneratedQuestions.length - 1];
+  question._userAnswer = userAnswer;
+  
+  // 判断对错
+  const correctAnswer = (question.answer || '').trim();
+  let isCorrect = false;
+  
+  if (question.type === '选择题' || question.type === '判断题') {
+    isCorrect = userAnswer.trim().toUpperCase() === correctAnswer.toUpperCase();
+  } else {
+    // 填空题和简答题：模糊匹配
+    const normalize = s => s.replace(/\s+/g, '').toLowerCase();
+    isCorrect = normalize(userAnswer) === normalize(correctAnswer) || 
+                normalize(correctAnswer).includes(normalize(userAnswer)) && userAnswer.length >= correctAnswer.length * 0.5;
+  }
+  
+  if (isCorrect) examCorrectCount++;
+  
+  // 隐藏作答区域，显示结果
+  document.getElementById('examInputArea').style.display = 'none';
+  document.getElementById('examResultArea').style.display = '';
+  
+  const resultMsg = document.getElementById('examResultMsg');
+  if (isCorrect) {
+    resultMsg.style.background = '#e8f5e9';
+    resultMsg.style.color = '#2e7d32';
+    resultMsg.textContent = '✅ 回答正确！';
+  } else {
+    resultMsg.style.background = '#ffebee';
+    resultMsg.style.color = '#c62828';
+    resultMsg.innerHTML = '❌ 回答错误。你的答案：' + escapeHtml(userAnswer);
+  }
+  
+  document.getElementById('examAnswerContent').textContent = correctAnswer || '暂无';
+  
+  // 更新计数
+  document.getElementById('generatedCount').textContent = examGeneratedQuestions.length;
+  
+  // 隐藏提交按钮
+  document.getElementById('examSubmitBtn').style.display = 'none';
+  
+  // 显示下一题或完成按钮
+  document.getElementById('examSkipBtn').style.display = 'none';
   if (examCurrentIndex < examTotalCount) {
+    document.getElementById('examNextBtn').style.display = '';
+    document.getElementById('examNextBtn').textContent = '下一题 →';
+  } else {
+    document.getElementById('examFinishBtn').style.display = '';
+  }
+}
+
+function skipCurrentQuestion() {
+  const question = examGeneratedQuestions[examGeneratedQuestions.length - 1];
+  if (question) question._userAnswer = '（已跳过）';
+  
+  if (examCurrentIndex < examTotalCount) {
+    // 恢复提交按钮显示
+    document.getElementById('examSubmitBtn').style.display = '';
     generateNextQuestion();
   }
 }
@@ -867,10 +983,20 @@ function updateGeneratedList() {
   const list = document.getElementById('examGeneratedList');
   let html = '';
   examGeneratedQuestions.forEach((q, i) => {
-    const isLast = (i === examGeneratedQuestions.length - 1);
-    html += `<div style="padding:10px 12px;margin-bottom:8px;background:${isLast ? '#FFF8F0' : '#fafafa'};border-radius:6px;border-left:3px solid ${isLast ? '#7A5C42' : '#E8DDD0'};">
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${i+1}. [${q.type}]</div>
-      <div style="font-size:13px;color:#555;">${escapeHtml((q.content || '').substring(0, 80))}${(q.content || '').length > 80 ? '...' : ''}</div>
+    const userAns = q._userAnswer || '（未作答）';
+    const correctAns = q.answer || '暂无';
+    let isCorrect = false;
+    if (q.type === '选择题' || q.type === '判断题') {
+      isCorrect = userAns.trim().toUpperCase() === correctAns.trim().toUpperCase();
+    } else {
+      const normalize = s => s.replace(/\s+/g, '').toLowerCase();
+      isCorrect = normalize(userAns) === normalize(correctAns);
+    }
+    const icon = userAns === '（已跳过）' ? '⏭️' : (isCorrect ? '✅' : '❌');
+    html += `<div style="padding:10px 12px;margin-bottom:8px;background:#fafafa;border-radius:6px;border-left:3px solid ${isCorrect ? '#27ae60' : (userAns === '（已跳过）' ? '#f39c12' : '#e74c3c')};">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${icon} 第${i+1}题 [${q.type}]</div>
+      <div style="font-size:13px;color:#555;margin-bottom:4px;">${escapeHtml((q.content || '').substring(0, 80))}${(q.content || '').length > 80 ? '...' : ''}</div>
+      <div style="font-size:12px;color:#8B7355;">你的答案：${escapeHtml(userAns)} | 正确答案：${escapeHtml(correctAns)}</div>
     </div>`;
   });
   list.innerHTML = html || '<p style="color:#999;font-size:14px;">暂无</p>';
@@ -882,7 +1008,30 @@ function finishOneByOneExam() {
     return;
   }
   
-  // 组装成完整试卷
+  // 显示成绩和全部题目列表
+  updateGeneratedList();
+  document.getElementById('examFinalList').style.display = '';
+  document.getElementById('generatedCount').textContent = examGeneratedQuestions.length;
+  
+  // 隐藏当前题目和按钮
+  document.getElementById('examCurrentQuestion').style.display = 'none';
+  document.getElementById('examNextBtn').style.display = 'none';
+  document.getElementById('examSkipBtn').style.display = 'none';
+  document.getElementById('examFinishBtn').style.display = 'none';
+  
+  // 显示成绩卡片
+  const scoreHtml = `<div class="card" style="text-align:center;background:#FFF8F0;">
+    <h3 style="margin-bottom:12px;">🎉 答题完成！</h3>
+    <div style="font-size:36px;font-weight:700;color:#7A5C42;margin:8px 0;">${examCorrectCount} / ${examGeneratedQuestions.length}</div>
+    <div style="color:#8B7355;font-size:14px;">正确 ${examCorrectCount} 题，错误 ${examGeneratedQuestions.length - examCorrectCount} 题</div>
+    <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-primary" onclick="saveExam();showToast('试卷已保存！');">📥 保存试卷</button>
+      <button class="btn" onclick="resetExamView()">📝 再来一组</button>
+    </div>
+  </div>`;
+  document.getElementById('examFinalList').insertAdjacentHTML('beforebegin', scoreHtml);
+  
+  // 组装试卷数据
   currentExam = {
     title: 'AI 生成试卷 - ' + examSourceFileName,
     questions: examGeneratedQuestions.map(q => ({
@@ -895,14 +1044,17 @@ function finishOneByOneExam() {
     saveTime: Date.now(),
     source: 'ai'
   };
+}
+
+function resetExamView() {
+  // 移除成绩卡片
+  const scoreCards = document.querySelectorAll('#examOneByOne > .card[style*="text-align:center"]');
+  scoreCards.forEach(c => c.remove());
   
-  showToast('试卷已生成！共 ' + examGeneratedQuestions.length + ' 题');
-  
-  // 直接保存
-  saveExam();
-  
-  // 隐藏逐题区域
+  document.getElementById('examCurrentQuestion').style.display = '';
+  document.getElementById('examFinalList').style.display = 'none';
   document.getElementById('examOneByOne').style.display = 'none';
+  document.getElementById('examConfig').style.display = '';
 }
 
 async function handleOrganizeFile(e) {

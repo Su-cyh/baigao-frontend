@@ -205,9 +205,76 @@
         <div class="exam-panel active" id="exam-file-panel">
           <div class="upload-zone" onclick="document.getElementById('examFileInput').click()">
             <p>📄 点击上传学习资料（PDF/Word/TXT）</p>
-            <p style="font-size:12px;color:#999;margin-top:8px;">AI 将根据资料自动生成试卷</p>
+            <p style="font-size:12px;color:#999;margin-top:8px;">AI 将根据资料内容逐题生成</p>
           </div>
           <input type="file" id="examFileInput" style="display:none" accept=".pdf,.doc,.docx,.txt" onchange="handleExamFile(event)">
+          
+          <!-- 出题配置 -->
+          <div id="examConfig" style="display:none;margin-top:16px;">
+            <div class="card">
+              <h3 style="margin-bottom:12px;">⚙️ 出题设置</h3>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                <div>
+                  <p style="color:#8B7355;font-size:13px;margin-bottom:4px;">题目数量</p>
+                  <select id="examQuestionCount">
+                    <option value="3">3 题</option>
+                    <option value="5" selected>5 题</option>
+                    <option value="8">8 题</option>
+                    <option value="10">10 题</option>
+                    <option value="15">15 题</option>
+                    <option value="20">20 题</option>
+                  </select>
+                </div>
+                <div>
+                  <p style="color:#8B7355;font-size:13px;margin-bottom:4px;">题目类型</p>
+                  <select id="examQuestionType">
+                    <option value="mixed">混合出题</option>
+                    <option value="choice">只出选择题</option>
+                    <option value="fill">只出填空题</option>
+                    <option value="judge">只出判断题</option>
+                    <option value="short">只出简答题</option>
+                  </select>
+                </div>
+                <div>
+                  <p style="color:#8B7355;font-size:13px;margin-bottom:4px;">难度</p>
+                  <select id="examDifficulty">
+                    <option value="简单">简单</option>
+                    <option value="中等" selected>中等</option>
+                    <option value="困难">困难</option>
+                  </select>
+                </div>
+              </div>
+              <div id="examFileName" style="margin-top:10px;font-size:13px;color:#8B7355;"></div>
+              <button class="btn btn-primary" style="margin-top:12px;" onclick="startOneByOneExam()">开始逐题出题</button>
+            </div>
+          </div>
+
+          <!-- 逐题出题区域 -->
+          <div id="examOneByOne" style="display:none;margin-top:16px;">
+            <div class="card" id="examCurrentQuestion">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <span id="examProgress" style="font-size:14px;color:#8B7355;">第 1 / 5 题</span>
+                <span id="examLoading" style="display:none;color:#7A5C42;font-size:14px;">⏳ AI 出题中...</span>
+              </div>
+              <div id="examQuestionContent" style="line-height:1.8;"></div>
+              <div id="examAnswerArea" style="margin-top:16px;display:none;">
+                <div style="border-top:1px dashed #E8DDD0;padding-top:12px;">
+                  <p style="font-weight:600;color:#7A5C42;margin-bottom:8px;">📖 参考答案</p>
+                  <div id="examAnswerContent" style="color:#555;line-height:1.8;"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">
+              <button class="btn" id="examSkipBtn" onclick="skipCurrentQuestion()" style="display:none;">跳过</button>
+              <button class="btn btn-primary" id="examNextBtn" onclick="generateNextQuestion()" style="display:none;">下一题 →</button>
+              <button class="btn btn-primary" id="examFinishBtn" onclick="finishOneByOneExam()" style="display:none;background:#27ae60;border-color:#27ae60;">完成并保存试卷</button>
+            </div>
+            <!-- 已生成的题目列表 -->
+            <div class="card" style="margin-top:16px;">
+              <h3 style="margin-bottom:12px;">📋 已生成的题目 (<span id="generatedCount">0</span>)</h3>
+              <div id="examGeneratedList" style="max-height:400px;overflow-y:auto;"></div>
+            </div>
+          </div>
         </div>
         
         <div class="exam-panel" id="exam-organize-panel">
@@ -614,6 +681,13 @@ function switchExamTab(tab) {
   if (tab === 'history') renderSavedExams();
 }
 
+// ========== 逐题出题 ==========
+let examSourceContent = '';
+let examSourceFileName = '';
+let examGeneratedQuestions = [];
+let examCurrentIndex = 0;
+let examTotalCount = 5;
+
 async function handleExamFile(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -625,26 +699,180 @@ async function handleExamFile(e) {
       showToast('文件内容为空，请检查文件');
       return;
     }
-    showToast('文件读取成功，正在生成试卷...');
-    const result = await callDeepSeek([
-      { role: 'system', content: '你是一个专业的出题老师。请严格以JSON格式返回，不要包含任何其他文字。JSON格式：{"title":"试卷标题","questions":[{"type":"选择题","content":"题目内容","options":["A. xxx","B. xxx","C. xxx","D. xxx"],"answer":"A"},{"type":"填空题","content":"题目内容","answer":"答案"},{"type":"简答题","content":"题目内容","answer":"参考答案"}]}' },
-      { role: 'user', content: `请仔细阅读以下学习资料，根据资料内容生成一份包含5道选择题、3道填空题、2道简答题的试卷（共10题），并给出标准答案。请确保题目紧扣资料内容，难度适中。\n\n资料内容：\n${content}` }
-    ]);
-    if (result) {
-      try {
-        const cleaned = cleanJsonResponse(result);
-        const exam = JSON.parse(cleaned);
-        currentExam = { title: exam.title || 'AI 生成试卷', questions: exam.questions, date: new Date().toISOString(), source: 'ai' };
-        showExamPreview(currentExam);
-        showToast('试卷生成成功！');
-      } catch(err) {
-        showToast('试卷格式错误，请重试');
-        console.log('JSON解析失败，AI返回:', result);
-      }
-    }
+    examSourceContent = content;
+    examSourceFileName = file.name;
+    
+    // 显示配置面板
+    document.getElementById('examConfig').style.display = '';
+    document.getElementById('examOneByOne').style.display = 'none';
+    document.getElementById('examFileName').textContent = '📄 ' + file.name + '（' + content.length + ' 字）';
+    showToast('文件读取成功，请设置出题参数');
   } catch(err) {
     showToast('文件读取失败：' + err.message);
   }
+}
+
+function startOneByOneExam() {
+  examTotalCount = parseInt(document.getElementById('examQuestionCount').value);
+  examGeneratedQuestions = [];
+  examCurrentIndex = 0;
+  
+  // 隐藏配置，显示逐题区域
+  document.getElementById('examConfig').style.display = 'none';
+  document.getElementById('examOneByOne').style.display = '';
+  document.getElementById('examGeneratedList').innerHTML = '<p style="color:#999;font-size:14px;">等待生成...</p>';
+  document.getElementById('generatedCount').textContent = '0';
+  
+  // 开始生成第一题
+  generateNextQuestion();
+}
+
+async function generateNextQuestion() {
+  examCurrentIndex++;
+  
+  // 更新进度
+  document.getElementById('examProgress').textContent = '第 ' + examCurrentIndex + ' / ' + examTotalCount + ' 题';
+  document.getElementById('examLoading').style.display = '';
+  document.getElementById('examQuestionContent').innerHTML = '<span style="color:#999;">AI 正在出题...</span>';
+  document.getElementById('examAnswerArea').style.display = 'none';
+  document.getElementById('examNextBtn').style.display = 'none';
+  document.getElementById('examSkipBtn').style.display = 'none';
+  
+  // 构建类型提示
+  const typeMap = {
+    'mixed': '从选择题、填空题、判断题、简答题中随机选择一种类型',
+    'choice': '选择题（包含4个选项A/B/C/D）',
+    'fill': '填空题',
+    'judge': '判断题（答案为"正确"或"错误"）',
+    'short': '简答题'
+  };
+  const typeSetting = document.getElementById('examQuestionType').value;
+  const difficulty = document.getElementById('examDifficulty').value;
+  
+  // 构建已出题目的摘要（避免重复）
+  let prevSummary = '';
+  if (examGeneratedQuestions.length > 0) {
+    prevSummary = '\n\n已出过的题目摘要（请勿重复）：';
+    examGeneratedQuestions.forEach((q, i) => {
+      prevSummary += '\n第' + (i+1) + '题(' + q.type + ')：' + (q.content || '').substring(0, 50) + '...';
+    });
+  }
+  
+  const truncatedContent = examSourceContent.length > 3000 ? examSourceContent.substring(0, 3000) + '...(已截断)' : examSourceContent;
+  
+  try {
+    const result = await callDeepSeek([
+      { role: 'system', content: '你是一个专业的出题老师。请严格以JSON格式返回一道题目，不要包含任何其他文字。JSON格式示例：\n选择题：{"type":"选择题","content":"题目内容","options":["A. 选项1","B. 选项2","C. 选项3","D. 选项4"],"answer":"A"}\n填空题：{"type":"填空题","content":"题目内容（用____表示空）","answer":"正确答案"}\n判断题：{"type":"判断题","content":"题目内容","answer":"正确"}\n简答题：{"type":"简答题","content":"题目内容","answer":"参考答案"}' },
+      { role: 'user', content: `请根据以下学习资料，出第 ${examCurrentIndex} 题（共 ${examTotalCount} 题）。\n\n要求：\n- 题目类型：${typeMap[typeSetting]}\n- 难度：${difficulty}\n- 必须紧扣资料内容\n- 每道题都要考查不同的知识点${prevSummary}\n\n资料内容：\n${truncatedContent}` }
+    ]);
+    
+    document.getElementById('examLoading').style.display = 'none';
+    
+    if (!result) {
+      document.getElementById('examQuestionContent').innerHTML = '<span style="color:#e74c3c;">出题失败，请重试</span>';
+      document.getElementById('examSkipBtn').style.display = '';
+      return;
+    }
+    
+    // 解析题目
+    const cleaned = cleanJsonResponse(result);
+    let question;
+    try {
+      question = JSON.parse(cleaned);
+    } catch(e) {
+      document.getElementById('examQuestionContent').innerHTML = '<span style="color:#e74c3c;">题目格式错误，请重试</span>';
+      document.getElementById('examSkipBtn').style.display = '';
+      return;
+    }
+    
+    // 存储题目
+    question._index = examCurrentIndex;
+    examGeneratedQuestions.push(question);
+    document.getElementById('generatedCount').textContent = examGeneratedQuestions.length;
+    
+    // 显示题目
+    let qHtml = `<div style="font-weight:600;margin-bottom:8px;">第 ${examCurrentIndex} 题 [${question.type}]</div>`;
+    qHtml += `<div style="margin-bottom:12px;">${escapeHtml(question.content)}</div>`;
+    
+    if (question.type === '选择题' && question.options) {
+      qHtml += '<div style="display:flex;flex-direction:column;gap:6px;">';
+      question.options.forEach(opt => {
+        qHtml += `<div style="padding:8px 12px;background:#FFF8F0;border-radius:6px;font-size:14px;">${escapeHtml(opt)}</div>`;
+      });
+      qHtml += '</div>';
+    }
+    
+    document.getElementById('examQuestionContent').innerHTML = qHtml;
+    
+    // 显示答案
+    document.getElementById('examAnswerArea').style.display = '';
+    document.getElementById('examAnswerContent').textContent = question.answer || '暂无答案';
+    
+    // 更新已生成列表
+    updateGeneratedList();
+    
+    // 显示按钮
+    if (examCurrentIndex < examTotalCount) {
+      document.getElementById('examNextBtn').style.display = '';
+      document.getElementById('examNextBtn').textContent = '下一题 →';
+      document.getElementById('examSkipBtn').style.display = '';
+    } else {
+      document.getElementById('examFinishBtn').style.display = '';
+    }
+    
+  } catch(e) {
+    document.getElementById('examLoading').style.display = 'none';
+    document.getElementById('examQuestionContent').innerHTML = '<span style="color:#e74c3c;">出错：' + escapeHtml(e.message) + '</span>';
+    document.getElementById('examSkipBtn').style.display = '';
+  }
+}
+
+function skipCurrentQuestion() {
+  if (examCurrentIndex < examTotalCount) {
+    generateNextQuestion();
+  }
+}
+
+function updateGeneratedList() {
+  const list = document.getElementById('examGeneratedList');
+  let html = '';
+  examGeneratedQuestions.forEach((q, i) => {
+    const isLast = (i === examGeneratedQuestions.length - 1);
+    html += `<div style="padding:10px 12px;margin-bottom:8px;background:${isLast ? '#FFF8F0' : '#fafafa'};border-radius:6px;border-left:3px solid ${isLast ? '#7A5C42' : '#E8DDD0'};">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${i+1}. [${q.type}]</div>
+      <div style="font-size:13px;color:#555;">${escapeHtml((q.content || '').substring(0, 80))}${(q.content || '').length > 80 ? '...' : ''}</div>
+    </div>`;
+  });
+  list.innerHTML = html || '<p style="color:#999;font-size:14px;">暂无</p>';
+}
+
+function finishOneByOneExam() {
+  if (examGeneratedQuestions.length === 0) {
+    showToast('还没有生成任何题目');
+    return;
+  }
+  
+  // 组装成完整试卷
+  currentExam = {
+    title: 'AI 生成试卷 - ' + examSourceFileName,
+    questions: examGeneratedQuestions.map(q => ({
+      type: q.type,
+      content: q.content,
+      options: q.options,
+      answer: q.answer
+    })),
+    date: new Date().toISOString(),
+    saveTime: Date.now(),
+    source: 'ai'
+  };
+  
+  showToast('试卷已生成！共 ' + examGeneratedQuestions.length + ' 题');
+  
+  // 直接保存
+  saveExam();
+  
+  // 隐藏逐题区域
+  document.getElementById('examOneByOne').style.display = 'none';
 }
 
 async function handleOrganizeFile(e) {
@@ -834,6 +1062,7 @@ function saveExam() {
   showToast('试卷已保存');
   updateStats();
   renderSavedExams();
+  if (typeof renderProfileExamList === 'function') renderProfileExamList();
 }
 
 // ========== 我的试卷 ==========

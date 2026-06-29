@@ -63,6 +63,12 @@
     .q-option.correct { background: #c8e6c9; border-color: #4caf50; }
     .q-option.wrong { background: #ffcdd2; border-color: #f44336; }
     
+    /* === Live Recording === */
+    @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.8); } }
+    .rec-pulse { animation: pulse 1.2s infinite; }
+    .live-final { color: #e0e0e0; }
+    .live-interim { color: #888; font-style:italic; border-bottom:1px dashed #555; }
+    
     /* === Forum === */
     .forum-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
     .forum-tab { padding: 8px 16px; cursor: pointer; border-radius: 6px; background: #F0E8DC; }
@@ -382,15 +388,18 @@
         <div id="recLivePanel">
           <div style="display:flex;gap:20px;height:calc(100vh - 220px);">
             <div style="flex:1;display:flex;flex-direction:column;">
-              <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+              <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:#1a1a2e;border:2px solid #333;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                  <h3>📝 实时转写</h3>
                   <div style="display:flex;align-items:center;gap:10px;">
-                    <span id="recTimer" style="font-size:14px;color:#999;font-variant-numeric:tabular-nums;">00:00</span>
+                    <h3 style="color:#e0e0e0;">📝 实时转写</h3>
+                    <span id="recStatusDot" style="display:none;width:10px;height:10px;border-radius:50%;background:#e74c3c;"></span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span id="recTimer" style="font-size:16px;color:#aaa;font-variant-numeric:tabular-nums;font-family:monospace;">00:00</span>
                     <button class="btn btn-primary" id="recStartBtn" onclick="toggleLiveRecord()" style="border-radius:50%;width:48px;height:48px;font-size:20px;padding:0;">🎤</button>
                   </div>
                 </div>
-                <div id="liveTranscript" style="flex:1;overflow-y:auto;font-size:15px;line-height:1.8;color:#555;white-space:pre-wrap;">点击麦克风按钮开始录音...</div>
+                <div id="liveTranscript" style="flex:1;overflow-y:auto;font-size:17px;line-height:2;color:#e0e0e0;white-space:pre-wrap;font-family:'PingFang SC','Microsoft YaHei',sans-serif;">点击麦克风按钮开始录音...</div>
               </div>
             </div>
             <div style="flex:1;display:flex;flex-direction:column;">
@@ -1951,13 +1960,13 @@ async function startLiveRecord() {
         }
       }
       // 实时显示：已确认的文字 + 临时的灰色文字
-      let displayText = '<div style="white-space:pre-wrap;line-height:1.8;">' + escapeHtml(finalTranscript);
+      let displayText = '<span class="live-final">' + escapeHtml(finalTranscript) + '</span>';
       if (interimTranscript) {
-        displayText += '<span style="color:#999;">' + escapeHtml(interimTranscript) + '</span>';
+        displayText += '<span class="live-interim">' + escapeHtml(interimTranscript) + '</span>';
       }
-      displayText += '</div>';
-      document.getElementById('liveTranscript').innerHTML = displayText;
-      document.getElementById('liveTranscript').style.color = '#555';
+      const el = document.getElementById('liveTranscript');
+      el.innerHTML = displayText;
+      el.scrollTop = el.scrollHeight;
     };
     
     recognition.onerror = (event) => {
@@ -1984,10 +1993,12 @@ async function startLiveRecord() {
       recognition.start();
       isRecording = true;
       
-      document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;">🎙️ 正在录音中...请开始说话</span><br><span style="color:#999;font-size:13px;">实时转写中</span>';
+      document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;font-size:15px;">🎙️ 正在录音，请开始说话...</span><br><span style="color:#666;font-size:13px;">实时转写将在此显示</span>';
       document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">录音结束后自动整理笔记...</span>';
       document.getElementById('recStartBtn').style.background = '#c0392b';
       document.getElementById('recStartBtn').textContent = '⏹';
+      document.getElementById('recStatusDot').style.display = '';
+      document.getElementById('recStatusDot').classList.add('rec-pulse');
       
       recStartTime = Date.now();
       document.getElementById('recTimer').textContent = '00:00';
@@ -2057,8 +2068,7 @@ async function startMediaRecorderFallback() {
         return;
       }
       
-      document.getElementById('liveTranscript').innerHTML = '<div style="white-space:pre-wrap;line-height:1.8;">' + escapeHtml(transcript) + '</div>';
-      document.getElementById('liveTranscript').style.color = '#555';
+      document.getElementById('liveTranscript').innerHTML = '<span class="live-final">' + escapeHtml(transcript) + '</span>';
       
       generateLiveNotes(transcript);
     } catch (e) {
@@ -2070,10 +2080,12 @@ async function startMediaRecorderFallback() {
   isRecording = true;
   useFallbackMode = true;
   
-  document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;">🎙️ 正在录音中...请开始说话</span><br><span style="color:#999;font-size:13px;">录音结束后将自动识别</span>';
+  document.getElementById('liveTranscript').innerHTML = '<span style="color:#27ae60;font-size:15px;">🎙️ 正在录音中...请开始说话</span><br><span style="color:#666;font-size:13px;">录音结束后将自动识别</span>';
   document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">录音结束后自动整理笔记...</span>';
   document.getElementById('recStartBtn').style.background = '#c0392b';
   document.getElementById('recStartBtn').textContent = '⏹';
+  document.getElementById('recStatusDot').style.display = '';
+  document.getElementById('recStatusDot').classList.add('rec-pulse');
   
   recStartTime = Date.now();
   document.getElementById('recTimer').textContent = '00:00';
@@ -2102,14 +2114,16 @@ function stopLiveRecord() {
     clearInterval(recTimerInterval);
     document.getElementById('recStartBtn').style.background = '#7A5C42';
     document.getElementById('recStartBtn').textContent = '🎤';
+    document.getElementById('recStatusDot').style.display = 'none';
+    document.getElementById('recStatusDot').classList.remove('rec-pulse');
     
     // 清理引用
     window._currentRecognition = null;
     window._getFinalTranscript = null;
     
     if (finalTranscript && finalTranscript.trim()) {
-      // 更新显示，移除临时文字样式
-      document.getElementById('liveTranscript').innerHTML = '<div style="white-space:pre-wrap;line-height:1.8;">' + escapeHtml(finalTranscript) + '</div>';
+      // 更新显示
+      document.getElementById('liveTranscript').innerHTML = '<span class="live-final">' + escapeHtml(finalTranscript) + '</span>';
       // 自动生成笔记
       generateLiveNotes(finalTranscript);
     } else {
@@ -2126,6 +2140,8 @@ function stopLiveRecord() {
   
   document.getElementById('recStartBtn').style.background = '#7A5C42';
   document.getElementById('recStartBtn').textContent = '🎤';
+  document.getElementById('recStatusDot').style.display = 'none';
+  document.getElementById('recStatusDot').classList.remove('rec-pulse');
 }
 
 async function generateLiveNotes(text) {

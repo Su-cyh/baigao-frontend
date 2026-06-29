@@ -519,7 +519,7 @@
               <option value="deepseek-chat">DeepSeek-V3（快速，日常使用）</option>
               <option value="deepseek-reasoner">DeepSeek-R1（深度推理，更聪明但较慢）</option>
             </select>
-            <p style="color:#666;margin:8px 0;">DashScope API Key（语音识别）</p>
+            <p style="color:#666;margin:8px 0;">DashScope API Key（录音笔记-通义千问+语音识别）</p>
             <input type="password" id="settingDashScopeKey" placeholder="sk-xxx（百炼平台API Key）" style="margin-bottom:8px;">
             <p style="color:#666;margin:8px 0;">后端服务地址（可选）</p>
             <input type="text" id="settingBackendUrl" placeholder="例如：https://your-backend.onrender.com" style="margin-bottom:10px;">
@@ -625,6 +625,33 @@ async function callDeepSeek(messages, options = {}) {
       },
       body: JSON.stringify({ 
         model: localStorage.getItem('baigao_model') || 'deepseek-chat',
+        messages: messages,
+        ...options 
+      })
+    });
+    const data = await res.json();
+    if (data.error) { showToast('AI 错误：' + (data.error.message || data.error)); return null; }
+    return data.choices?.[0]?.message?.content || null;
+  } catch(e) {
+    showToast('网络错误：' + e.message);
+    return null;
+  }
+}
+
+// 通义千问 API（用于录音笔记）
+async function callQwen(messages, options = {}) {
+  const apiKey = getDashScopeApiKey();
+  if (!apiKey) { showToast('请先配置 DashScope API Key'); return null; }
+  
+  try {
+    const res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({ 
+        model: 'qwen-plus',
         messages: messages,
         ...options 
       })
@@ -1943,7 +1970,7 @@ function stopLiveRecord() {
 async function generateLiveNotes(text) {
   if (!text.trim()) return;
   document.getElementById('liveNotes').innerHTML = '<span style="color:#999;">AI 正在整理笔记...</span>';
-  const result = await callDeepSeek([
+  const result = await callQwen([
     { role: 'system', content: '你是一个学习笔记整理助手。根据以下语音转写的文字内容，整理出一份清晰的笔记。要求：\n1. 提取关键要点\n2. 按主题分段\n3. 用编号和缩进展示层级\n4. 标注重要概念\n5. 忽略口语化的语气词和重复内容' },
     { role: 'user', content: `请根据以下内容整理笔记：\n${text}` }
   ]);
@@ -2004,13 +2031,13 @@ async function processUploadedAudio() {
     document.getElementById('audioProgressText').textContent = '识别完成（' + transcript.length + ' 字），正在生成思维导图和笔记...';
     document.getElementById('audioProgressFill').style.width = '70%';
     
-    // 同时生成思维导图和笔记
+    // 同时生成思维导图和笔记（使用通义千问）
     const [mindmap, notes] = await Promise.all([
-      callDeepSeek([
+      callQwen([
         { role: 'system', content: '你是一个专业的思维导图生成助手。请根据用户提供的文本内容，生成结构清晰的思维导图，使用 Markdown 缩进层级格式。要求：1. 提炼核心主题作为根节点 2. 按逻辑关系分层 3. 每层节点简洁精炼（不超过15字） 4. 层次分明、重点突出' },
         { role: 'user', content: `请根据以下内容生成思维导图（Markdown 缩进格式）：\n\n${transcript}` }
       ]),
-      callDeepSeek([
+      callQwen([
         { role: 'system', content: '你是一个专业的学习笔记整理助手。请根据用户提供的文本内容，生成一份结构清晰、重点突出的笔记摘要。要求：1. 提取核心要点 2. 按主题分段 3. 用编号列表展示 4. 标注关键概念和重要术语' },
         { role: 'user', content: `请根据以下内容生成笔记摘要：\n\n${transcript}` }
       ])

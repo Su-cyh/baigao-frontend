@@ -209,6 +209,7 @@
           <div class="exam-tab" onclick="switchExamTab('organize')">整理试卷</div>
           <div class="exam-tab" onclick="switchExamTab('extend')">延伸出题</div>
           <div class="exam-tab" onclick="switchExamTab('history')">📚 我的试卷</div>
+          <div class="exam-tab" onclick="switchExamTab('wrong')">📕 错题本</div>
         </div>
         
         <div class="exam-panel active" id="exam-file-panel">
@@ -788,6 +789,7 @@ function exitExamMode() {
   document.getElementById('examFinalView').style.display = 'none';
   document.getElementById('examMainView').style.display = 'none';
   document.getElementById('examConfig').style.display = 'none';
+  document.getElementById('extendConfig').style.display = 'none';
   // 恢复到默认的资料出题 tab
   document.querySelectorAll('.exam-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.exam-panel').forEach(p => p.classList.remove('active'));
@@ -838,13 +840,16 @@ function enterExamMode(questions, title) {
   examAnswerStatus = new Array(examTotalCount).fill(0);
   examSourceTitle = title;
 
-  // 隐藏配置和预览，显示答题区
+  // 隐藏所有 panel、配置和预览，只显示答题区
+  document.querySelectorAll('.exam-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('examConfig').style.display = 'none';
   document.getElementById('examPreview').style.display = 'none';
+  document.getElementById('extendConfig').style.display = 'none';
   document.getElementById('examOneByOne').style.display = '';
   document.getElementById('examLoadingAll').style.display = 'none';
   document.getElementById('examMainView').style.display = '';
   document.getElementById('examFinalView').style.display = 'none';
+  document.getElementById('examModeTitle').textContent = title;
 
   examCurrentIndex = 1;
   renderQuestionGrid();
@@ -859,12 +864,14 @@ async function startOneByOneExam() {
   examAnswerStatus = new Array(examTotalCount).fill(0);
   examSourceTitle = 'AI 生成试卷 - ' + (examSourceFileName || '资料');
   
-  // 隐藏配置，显示答题区，显示加载中
+  // 隐藏所有 panel 和配置，显示答题区加载中
+  document.querySelectorAll('.exam-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('examConfig').style.display = 'none';
   document.getElementById('examOneByOne').style.display = '';
   document.getElementById('examLoadingAll').style.display = '';
   document.getElementById('examMainView').style.display = 'none';
   document.getElementById('examFinalView').style.display = 'none';
+  document.getElementById('examModeTitle').textContent = examSourceTitle;
   
   // 生成全部题目
   await generateAllQuestions();
@@ -2897,6 +2904,7 @@ async function retestWrongQuestions() {
   document.getElementById('examLoadingAll').style.display = 'none';
   document.getElementById('examMainView').style.display = '';
   document.getElementById('examFinalView').style.display = 'none';
+  document.getElementById('examModeTitle').textContent = '错题重练';
   
   examCurrentIndex = 1;
   renderQuestionGrid();

@@ -369,32 +369,95 @@
       
       <!-- 我的 -->
       <div class="page" id="page-profile">
-        <h1 class="page-title">个人设置</h1>
+        <h1 class="page-title">我的</h1>
+        
+        <!-- 个人信息 -->
         <div class="card">
-          <h3>AI 服务配置</h3>
-          <p style="color:#666;margin:8px 0;">DeepSeek API Key（必填，用于AI出题、白糕聊天等功能）</p>
-          <input type="password" id="settingApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="margin-bottom:8px;">
-          <p style="color:#666;margin:8px 0;">AI 模型选择</p>
-          <select id="settingModel" style="margin-bottom:8px;">
-            <option value="deepseek-chat">DeepSeek-V3（快速，日常使用）</option>
-            <option value="deepseek-reasoner">DeepSeek-R1（深度推理，更聪明但较慢）</option>
-          </select>
-          <p style="color:#666;margin:8px 0;">DashScope API Key（语音识别用）</p>
-          <input type="password" id="settingDashScopeKey" placeholder="sk-xxx（百炼平台API Key）" style="margin-bottom:8px;">
-          <p style="color:#666;margin:8px 0;">后端服务地址（可选，如已部署后端可填写）</p>
-          <input type="text" id="settingBackendUrl" placeholder="例如：https://your-backend.onrender.com（可留空）">
-          <button class="btn btn-primary" style="margin-top:10px;" onclick="saveSettings()">保存配置</button>
+          <h3 style="margin-bottom:16px;">👤 个人信息</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <p style="color:#8B7355;font-size:13px;margin-bottom:4px;">姓名</p>
+              <input type="text" id="profileName" placeholder="你的昵称">
+            </div>
+            <div>
+              <p style="color:#8B7355;font-size:13px;margin-bottom:4px;">学校</p>
+              <input type="text" id="profileSchool" placeholder="你的学校">
+            </div>
+            <div>
+              <p style="color:#8B7355;font-size:13px;margin-bottom:4px;">年级/班级</p>
+              <input type="text" id="profileGrade" placeholder="如：高二3班">
+            </div>
+            <div>
+              <p style="color:#8B7355;font-size:13px;margin-bottom:4px;">兴趣学科</p>
+              <input type="text" id="profileInterest" placeholder="如：数学、物理、英语">
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <p style="color:#8B7355;font-size:13px;margin-bottom:4px;">个人简介</p>
+            <textarea id="profileBio" rows="2" placeholder="介绍一下自己吧..." style="resize:vertical;"></textarea>
+          </div>
+          <button class="btn btn-primary" style="margin-top:12px;" onclick="saveProfile()">保存个人信息</button>
         </div>
+
+        <!-- 我的数据概览 -->
         <div class="card">
-          <h3>数据统计</h3>
-          <p>已保存试卷：<span id="statExams">0</span> 份</p>
-          <p>论坛帖子：<span id="statPosts">0</span> 篇</p>
+          <h3 style="margin-bottom:12px;">📊 我的数据</h3>
+          <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            <div style="text-align:center;padding:12px 20px;background:#FFF8F0;border-radius:8px;min-width:100px;">
+              <div id="statExams" style="font-size:28px;font-weight:700;color:#7A5C42;">0</div>
+              <div style="font-size:13px;color:#8B7355;margin-top:4px;">已保存试卷</div>
+            </div>
+            <div style="text-align:center;padding:12px 20px;background:#FFF8F0;border-radius:8px;min-width:100px;">
+              <div id="statPosts" style="font-size:28px;font-weight:700;color:#7A5C42;">0</div>
+              <div style="font-size:13px;color:#8B7355;margin-top:4px;">论坛帖子</div>
+            </div>
+            <div style="text-align:center;padding:12px 20px;background:#FFF8F0;border-radius:8px;min-width:100px;">
+              <div id="statNotes" style="font-size:28px;font-weight:700;color:#7A5C42;">0</div>
+              <div style="font-size:13px;color:#8B7355;margin-top:4px;">笔记记录</div>
+            </div>
+          </div>
         </div>
+
+        <!-- 试卷管理 -->
         <div class="card">
-          <h3>数据管理</h3>
-          <button class="btn" onclick="exportData()">导出数据</button>
-          <button class="btn" onclick="document.getElementById('importInput').click()">导入数据</button>
-          <input type="file" id="importInput" style="display:none" accept=".json" onchange="importData(event)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3>📝 我的试卷</h3>
+            <button class="btn" onclick="switchPage('exam')" style="font-size:13px;">查看全部 →</button>
+          </div>
+          <div id="profileExamList"></div>
+        </div>
+
+        <!-- 数据管理 -->
+        <div class="card">
+          <h3 style="margin-bottom:12px;">💾 数据管理</h3>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn" onclick="exportData()">📤 导出数据</button>
+            <button class="btn" onclick="document.getElementById('importInput').click()">📥 导入数据</button>
+            <input type="file" id="importInput" style="display:none" accept=".json" onchange="importData(event)">
+            <button class="btn" onclick="clearAllData()" style="color:#c0392b;border-color:#c0392b;">🗑️ 清除所有数据</button>
+          </div>
+        </div>
+
+        <!-- 高级设置（折叠） -->
+        <div class="card">
+          <div onclick="toggleAdvancedSettings()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+            <h3>⚙️ 高级设置（API 配置）</h3>
+            <span id="advancedSettingsArrow" style="color:#8B7355;">▶</span>
+          </div>
+          <div id="advancedSettingsBody" style="display:none;margin-top:16px;">
+            <p style="color:#666;margin:8px 0;">DeepSeek API Key</p>
+            <input type="password" id="settingApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="margin-bottom:8px;">
+            <p style="color:#666;margin:8px 0;">AI 模型选择</p>
+            <select id="settingModel" style="margin-bottom:8px;">
+              <option value="deepseek-chat">DeepSeek-V3（快速，日常使用）</option>
+              <option value="deepseek-reasoner">DeepSeek-R1（深度推理，更聪明但较慢）</option>
+            </select>
+            <p style="color:#666;margin:8px 0;">DashScope API Key（语音识别）</p>
+            <input type="password" id="settingDashScopeKey" placeholder="sk-xxx（百炼平台API Key）" style="margin-bottom:8px;">
+            <p style="color:#666;margin:8px 0;">后端服务地址（可选）</p>
+            <input type="text" id="settingBackendUrl" placeholder="例如：https://your-backend.onrender.com" style="margin-bottom:10px;">
+            <button class="btn btn-primary" onclick="saveSettings()">保存配置</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1809,11 +1872,92 @@ function closeModal(event) {
   document.getElementById('modalOverlay').classList.remove('show');
 }
 
+// ========== 个人信息 ==========
+function saveProfile() {
+  const profile = {
+    name: document.getElementById('profileName').value.trim(),
+    school: document.getElementById('profileSchool').value.trim(),
+    grade: document.getElementById('profileGrade').value.trim(),
+    interest: document.getElementById('profileInterest').value.trim(),
+    bio: document.getElementById('profileBio').value.trim()
+  };
+  localStorage.setItem('user_profile', JSON.stringify(profile));
+  showToast('个人信息已保存');
+}
+
+function loadProfile() {
+  const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+  if (profile.name) document.getElementById('profileName').value = profile.name;
+  if (profile.school) document.getElementById('profileSchool').value = profile.school;
+  if (profile.grade) document.getElementById('profileGrade').value = profile.grade;
+  if (profile.interest) document.getElementById('profileInterest').value = profile.interest;
+  if (profile.bio) document.getElementById('profileBio').value = profile.bio;
+}
+
+function toggleAdvancedSettings() {
+  const body = document.getElementById('advancedSettingsBody');
+  const arrow = document.getElementById('advancedSettingsArrow');
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    arrow.textContent = '▼';
+  } else {
+    body.style.display = 'none';
+    arrow.textContent = '▶';
+  }
+}
+
+function renderProfileExamList() {
+  const exams = JSON.parse(localStorage.getItem('saved_exams') || '[]');
+  const container = document.getElementById('profileExamList');
+  
+  if (exams.length === 0) {
+    container.innerHTML = '<p style="color:#8B7355;font-size:14px;">还没有保存的试卷，去"出题中心"生成一份吧！</p>';
+    return;
+  }
+  
+  let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  const showExams = exams.slice(0, 5);
+  showExams.forEach((exam, idx) => {
+    const date = exam.saveTime ? new Date(exam.saveTime).toLocaleDateString('zh-CN') : '';
+    const qCount = exam.questions ? exam.questions.length : 0;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#FFF8F0;border-radius:6px;">
+      <div>
+        <span style="font-weight:600;font-size:14px;">${escapeHtml(exam.title || '未命名试卷')}</span>
+        <span style="font-size:12px;color:#8B7355;margin-left:8px;">${qCount}题 · ${date}</span>
+      </div>
+      <button class="btn" style="padding:4px 12px;font-size:12px;" onclick="switchPage('exam');switchExamTab('history');">查看</button>
+    </div>`;
+  });
+  if (exams.length > 5) {
+    html += `<p style="text-align:center;color:#8B7355;font-size:13px;">还有 ${exams.length - 5} 份试卷...</p>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function clearAllData() {
+  if (!confirm('确定要清除所有数据吗？包括试卷、帖子、个人信息等。此操作不可恢复！')) return;
+  if (!confirm('再次确认：真的要清除所有数据吗？')) return;
+  const keys = ['saved_exams','forum_posts','forum_private_msgs','forum_friends','forum_friend_requests','forum_anon_id','forum_liked_posts','user_profile'];
+  keys.forEach(k => localStorage.removeItem(k));
+  showToast('所有数据已清除');
+  updateStats();
+  renderProfileExamList();
+  document.getElementById('profileName').value = '';
+  document.getElementById('profileSchool').value = '';
+  document.getElementById('profileGrade').value = '';
+  document.getElementById('profileInterest').value = '';
+  document.getElementById('profileBio').value = '';
+}
+
 function updateStats() {
   const exams = JSON.parse(localStorage.getItem('saved_exams') || '[]');
   const posts = getForumPosts();
   document.getElementById('statExams').textContent = exams.length;
   document.getElementById('statPosts').textContent = posts.length;
+  // 笔记数量（论坛帖子中有"笔记"标签的，暂用0占位）
+  const notesEl = document.getElementById('statNotes');
+  if (notesEl) notesEl.textContent = '0';
 }
 
 function exportData() {
@@ -1857,7 +2001,9 @@ document.getElementById('settingApiKey').value = getApiKey();
 document.getElementById('settingDashScopeKey').value = getDashScopeApiKey();
 const savedModel = localStorage.getItem('baigao_model');
 if (savedModel) document.getElementById('settingModel').value = savedModel;
+loadProfile();
 updateStats();
+renderProfileExamList();
 
 // AI Chat window CSS
 const style = document.createElement('style');
